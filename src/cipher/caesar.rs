@@ -1,6 +1,8 @@
 use bimap::BiMap;
 use num_modular::ModularCoreOps;
 
+use crate::alphabet::Alphabet;
+
 pub struct CaesarCipher {
 	alphabet_pos: BiMap<char, usize>,
 	offset: usize,
@@ -8,12 +10,11 @@ pub struct CaesarCipher {
 
 impl CaesarCipher {
 	pub fn with_offset(offset: usize) -> Self {
-		let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".to_owned();
-		CaesarCipher::new(alphabet, offset)
+		CaesarCipher::new(Alphabet::default(), offset)
 	}
 
-	pub fn new(alphabet: String, offset: usize) -> Self {
-		let alphabet_pos = alphabet.chars().zip(0..).collect();
+	pub fn new(alphabet: Alphabet, offset: usize) -> Self {
+		let alphabet_pos = alphabet.0.chars().zip(0..).collect();
 
 		CaesarCipher {
 			alphabet_pos,
@@ -74,7 +75,7 @@ mod tests {
 
 	#[test]
 	fn test_caesar_cipher_with_custom_alphabet_and_offset() {
-		let alphabet = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ".to_owned();
+		let alphabet = Alphabet::polish();
 		let offset = 7;
 		let cipher = CaesarCipher::new(alphabet, offset);
 		let encoded = cipher.encode("CZEŚĆ");
