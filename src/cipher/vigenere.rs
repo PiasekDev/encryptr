@@ -36,13 +36,13 @@ impl VigenereCipher {
 		let mut result = String::with_capacity(input.len());
 
 		for char in input.chars() {
-			let encoded_char = if let Some(position) = self.alphabet_pos.get_by_left(&char) {
-				let key_offset = key_iter.next().unwrap();
-				let new_pos = position.addm(key_offset, &self.alphabet_pos.len());
-				*self.alphabet_pos.get_by_right(&new_pos).unwrap()
-			} else {
-				char
-			};
+			let encoded_char = self
+				.alphabet_pos
+				.get_by_left(&char)
+				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
+				.map(|(position, key_offset)| position.addm(key_offset, &self.alphabet_pos.len()))
+				.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos).copied())
+				.unwrap_or(char);
 
 			result.push(encoded_char);
 		}
@@ -55,15 +55,15 @@ impl VigenereCipher {
 		let mut result = String::with_capacity(input.len());
 
 		for char in input.chars() {
-			let encoded_char = if let Some(position) = self.alphabet_pos.get_by_left(&char) {
-				let key_offset = key_iter.next().unwrap();
-				let new_pos = position.subm(key_offset, &self.alphabet_pos.len());
-				*self.alphabet_pos.get_by_right(&new_pos).unwrap()
-			} else {
-				char
-			};
+			let decoded_char = self
+				.alphabet_pos
+				.get_by_left(&char)
+				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
+				.map(|(position, key_offset)| position.subm(key_offset, &self.alphabet_pos.len()))
+				.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos).copied())
+				.unwrap_or(char);
 
-			result.push(encoded_char);
+			result.push(decoded_char);
 		}
 
 		result
