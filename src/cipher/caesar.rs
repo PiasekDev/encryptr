@@ -30,10 +30,20 @@ impl CaesarCipher {
 	}
 
 	fn encode_char(&self, char: &char) -> Option<char> {
+		let was_uppercase = char.is_uppercase();
+		let uppercase_char = char.to_uppercase().next().unwrap();
+
 		self.alphabet_pos
-			.get_by_left(char)
+			.get_by_left(&uppercase_char)
 			.map(|pos| pos.addm(self.offset, &self.alphabet_pos.len()))
-			.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos).copied())
+			.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos))
+			.map(|new_char| {
+				if was_uppercase {
+					new_char.to_uppercase().next().unwrap()
+				} else {
+					*new_char
+				}
+			})
 	}
 
 	pub fn decode(&self, input: &str) -> String {

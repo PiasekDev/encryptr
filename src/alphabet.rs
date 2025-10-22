@@ -8,7 +8,7 @@ impl Default for Alphabet {
 
 impl Alphabet {
 	pub fn new(s: &str) -> Self {
-		Alphabet(s.to_owned())
+		Alphabet(s.chars().flat_map(|c| c.to_uppercase()).collect()) // TODO: error on multichar?
 	}
 
 	pub fn polish() -> Self {
