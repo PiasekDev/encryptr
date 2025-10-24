@@ -16,11 +16,11 @@ impl SubstitutionCipher {
 		alphabet: Alphabet,
 		mapping_alphabet: Alphabet,
 	) -> Result<Self, SubstitutionCipherError> {
-		if alphabet.0.len() != mapping_alphabet.0.len() {
+		if alphabet.len() != mapping_alphabet.len() {
 			return Err(SubstitutionCipherError::InvalidMappingLength);
 		}
 
-		let mapping = alphabet.0.chars().zip(mapping_alphabet.0.chars()).collect();
+		let mapping = alphabet.into_iter().zip(mapping_alphabet).collect();
 		Ok(SubstitutionCipher { mapping })
 	}
 

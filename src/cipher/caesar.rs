@@ -1,10 +1,9 @@
-use bimap::BiMap;
 use num_modular::ModularCoreOps;
 
 use crate::alphabet::Alphabet;
 
 pub struct CaesarCipher {
-	alphabet_pos: BiMap<char, usize>,
+	alphabet: Alphabet,
 	offset: usize,
 }
 
@@ -14,12 +13,7 @@ impl CaesarCipher {
 	}
 
 	pub fn new(alphabet: Alphabet, offset: usize) -> Self {
-		let alphabet_pos = alphabet.0.chars().zip(0..).collect();
-
-		CaesarCipher {
-			alphabet_pos,
-			offset,
-		}
+		CaesarCipher { alphabet, offset }
 	}
 
 	pub fn encode(&self, input: &str) -> String {
@@ -30,10 +24,10 @@ impl CaesarCipher {
 	}
 
 	fn encode_char(&self, char: &char) -> Option<char> {
-		self.alphabet_pos
-			.get_by_left(char)
-			.map(|pos| pos.addm(self.offset, &self.alphabet_pos.len()))
-			.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos).copied())
+		self.alphabet
+			.index_of(*char)
+			.map(|pos| pos.addm(self.offset, &self.alphabet.len()))
+			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 	}
 
 	pub fn decode(&self, input: &str) -> String {
@@ -44,10 +38,10 @@ impl CaesarCipher {
 	}
 
 	fn decode_char(&self, char: &char) -> Option<char> {
-		self.alphabet_pos
-			.get_by_left(char)
-			.map(|pos| pos.subm(self.offset, &self.alphabet_pos.len()))
-			.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos).copied())
+		self.alphabet
+			.index_of(*char)
+			.map(|pos| pos.subm(self.offset, &self.alphabet.len()))
+			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 	}
 }
 

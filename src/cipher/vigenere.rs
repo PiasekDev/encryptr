@@ -1,13 +1,10 @@
-use std::char;
-
-use bimap::BiMap;
 use num_modular::ModularCoreOps;
 
 use crate::alphabet::Alphabet;
 
 pub struct VigenereCipher {
 	key: Vec<usize>,
-	alphabet_pos: BiMap<char, usize>,
+	alphabet: Alphabet,
 }
 
 #[derive(Debug)]
@@ -21,14 +18,13 @@ impl VigenereCipher {
 	}
 
 	pub fn new(alphabet: Alphabet, keyword: &str) -> Result<Self, VigenereCipherError> {
-		let alphabet_pos: BiMap<char, usize> = alphabet.0.chars().zip(0..).collect();
 		let key = keyword
 			.chars()
-			.map(|c| alphabet_pos.get_by_left(&c).copied())
+			.map(|c| alphabet.index_of(c))
 			.collect::<Option<Vec<_>>>()
 			.ok_or(VigenereCipherError::KeywordNotInAlphabet)?;
 
-		Ok(VigenereCipher { key, alphabet_pos })
+		Ok(VigenereCipher { key, alphabet })
 	}
 
 	pub fn encode(&self, input: &str) -> String {
@@ -37,11 +33,11 @@ impl VigenereCipher {
 
 		for char in input.chars() {
 			let encoded_char = self
-				.alphabet_pos
-				.get_by_left(&char)
+				.alphabet
+				.index_of(char)
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
-				.map(|(position, key_offset)| position.addm(key_offset, &self.alphabet_pos.len()))
-				.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos).copied())
+				.map(|(position, key_offset)| position.addm(key_offset, &self.alphabet.len()))
+				.and_then(|new_pos| self.alphabet.char_at(new_pos))
 				.unwrap_or(char);
 
 			result.push(encoded_char);
@@ -56,11 +52,11 @@ impl VigenereCipher {
 
 		for char in input.chars() {
 			let decoded_char = self
-				.alphabet_pos
-				.get_by_left(&char)
+				.alphabet
+				.index_of(char)
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
-				.map(|(position, key_offset)| position.subm(key_offset, &self.alphabet_pos.len()))
-				.and_then(|new_pos| self.alphabet_pos.get_by_right(&new_pos).copied())
+				.map(|(position, key_offset)| position.subm(key_offset, &self.alphabet.len()))
+				.and_then(|new_pos| self.alphabet.char_at(new_pos))
 				.unwrap_or(char);
 
 			result.push(decoded_char);
