@@ -54,3 +54,9 @@ impl<'a> IntoIterator for &'a Alphabet {
 		self.0.iter()
 	}
 }
+
+impl FromIterator<char> for Alphabet {
+	fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+		Alphabet(iter.into_iter().collect())
+	}
+}
