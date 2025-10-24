@@ -23,8 +23,8 @@ impl Alphabet {
 		self.0.is_empty()
 	}
 
-	pub fn iter(&self) -> std::slice::Iter<'_, char> {
-		self.0.iter()
+	pub fn iter(&self) -> impl Iterator<Item = &char> {
+		self.into_iter()
 	}
 
 	pub fn index_of(&self, c: char) -> Option<usize> {
@@ -49,7 +49,8 @@ impl<'a> IntoIterator for &'a Alphabet {
 	type Item = &'a char;
 	type IntoIter = std::slice::Iter<'a, char>;
 
+	#[inline]
 	fn into_iter(self) -> Self::IntoIter {
-		self.iter()
+		self.0.iter()
 	}
 }
