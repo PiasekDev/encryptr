@@ -1,9 +1,9 @@
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::Alphabet;
+use crate::{alphabet::Alphabet, cased_alphabet::CasedAlphabet};
 
 pub struct CaesarCipher {
-	alphabet: Alphabet,
+	alphabet: CasedAlphabet,
 	offset: usize,
 }
 
@@ -13,7 +13,10 @@ impl CaesarCipher {
 	}
 
 	pub fn new(alphabet: Alphabet, offset: usize) -> Self {
-		CaesarCipher { alphabet, offset }
+		CaesarCipher {
+			alphabet: CasedAlphabet::try_from(alphabet).unwrap(),
+			offset,
+		}
 	}
 
 	pub fn encode(&self, input: &str) -> String {
@@ -26,7 +29,7 @@ impl CaesarCipher {
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos| pos.addm(self.offset, &self.alphabet.len()))
+			.map(|pos| pos.with_index(pos.index().addm(self.offset, &self.alphabet.len())))
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 	}
 
@@ -40,7 +43,7 @@ impl CaesarCipher {
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos| pos.subm(self.offset, &self.alphabet.len()))
+			.map(|pos| pos.with_index(pos.index().subm(self.offset, &self.alphabet.len())))
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 	}
 }
@@ -76,5 +79,14 @@ mod tests {
 		assert_eq!(encoded, "HĆKŻI");
 		let decoded = cipher.decode(&encoded);
 		assert_eq!(decoded, "CZEŚĆ");
+	}
+
+	#[test]
+	fn test_caesar_cipher_with_mixed_case_letters() {
+		let cipher = CaesarCipher::with_offset(3);
+		let encoded = cipher.encode("tHe quIcK BrOwN fOx jUmPeD OvEr ThE LaZy DoG.");
+		assert_eq!(encoded, "wKh txLfN EuRzQ iRa mXpShG RyHu WkH OdCb GrJ.");
+		let decoded = cipher.decode(&encoded);
+		assert_eq!(decoded, "tHe quIcK BrOwN fOx jUmPeD OvEr ThE LaZy DoG.");
 	}
 }
