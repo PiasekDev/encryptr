@@ -5,44 +5,70 @@ pub enum CharCase {
 }
 
 pub trait CharExt {
-	fn case(&self) -> Option<CharCase>;
+	type ConversionError;
 
-	fn at_case(&self, case: &CharCase) -> Option<char>;
+	// fn case(&self) -> Option<CharCase>;
 
-	fn to_uppercase_char(&self) -> Option<char>;
+	// fn at_case(&self, case: &CharCase) -> Option<char>;
 
-	fn to_lowercase_char(&self) -> Option<char>;
+	fn to_uppercase_char(&self) -> Result<char, Self::ConversionError>;
+
+	fn to_lowercase_char(&self) -> Result<char, Self::ConversionError>;
+}
+
+#[derive(Debug)]
+pub enum CaseConversionError {
+	MultipleCharacters,
+	NoCase,
 }
 
 impl CharExt for char {
+	type ConversionError = CaseConversionError;
+
 	/// Returns the case of the character if it is cased (upper or lower).
-	fn case(&self) -> Option<CharCase> {
-		match self {
-			c if c.is_uppercase() && c.to_uppercase_char().is_some() => Some(CharCase::Upper),
-			c if c.is_lowercase() && c.to_lowercase_char().is_some() => Some(CharCase::Lower),
-			_ => None,
+	// fn case(&self) -> Option<CharCase> {
+	// 	match self {
+	// 		c if c.to_uppercase_char().is_some() => Some(CharCase::Upper),
+	// 		c if c.to_lowercase_char().is_some() => Some(CharCase::Lower),
+	// 		_ => None,
+	// 	}
+	// }
+
+	// /// Returns the character in the specified case if possible.
+	// fn at_case(&self, case: &CharCase) -> Option<char> {
+	// 	match case {
+	// 		CharCase::Upper => self.to_uppercase_char(),
+	// 		CharCase::Lower => self.to_lowercase_char(),
+	// 	}
+	// }
+
+	/// Converts the character to uppercase if it results in a single character.\
+	/// Returns `None` if the uppercase conversion results in multiple characters or if the character has no case.
+	fn to_uppercase_char(&self) -> Result<char, Self::ConversionError> {
+		if has_case(self) {
+			self.to_uppercase()
+				.to_single_character()
+				.ok_or(CaseConversionError::MultipleCharacters)
+		} else {
+			Err(CaseConversionError::NoCase)
 		}
 	}
 
-	/// Returns the character in the specified case if possible.
-	fn at_case(&self, case: &CharCase) -> Option<char> {
-		match case {
-			CharCase::Upper => self.to_uppercase_char(),
-			CharCase::Lower => self.to_lowercase_char(),
+	/// Converts the character to lowercase if it results in a single character.\
+	/// Returns `None` if the lowercase conversion results in multiple characters or if the character has no case.
+	fn to_lowercase_char(&self) -> Result<char, Self::ConversionError> {
+		if has_case(self) {
+			self.to_lowercase()
+				.to_single_character()
+				.ok_or(CaseConversionError::MultipleCharacters)
+		} else {
+			Err(CaseConversionError::NoCase)
 		}
 	}
+}
 
-	/// Converts the character to uppercase if it results in a single character.
-	/// Returns `None` if the uppercase conversion results in multiple characters.
-	/// Similarly for `to_lowercase_char`.
-	/// If the character does not have a case mapping, returns `None`.
-	fn to_uppercase_char(&self) -> Option<char> {
-		self.to_uppercase().to_single_character()
-	}
-
-	fn to_lowercase_char(&self) -> Option<char> {
-		self.to_lowercase().to_single_character()
-	}
+fn has_case(c: &char) -> bool {
+	c.is_uppercase() || c.is_lowercase()
 }
 
 pub trait CharIteratorExt {

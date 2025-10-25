@@ -1,9 +1,13 @@
+use crate::char_ext::{CaseConversionError, CharExt};
+
 pub trait Alphabet<C> {
 	fn len(&self) -> usize;
 
 	fn is_empty(&self) -> bool;
 
-	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a C> where C: 'a;
+	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a C>
+	where
+		C: 'a;
 
 	fn index_of(&self, char: char) -> Option<usize>;
 
@@ -21,7 +25,10 @@ impl Alphabet<char> for UncasedAlphabet {
 		self.is_empty()
 	}
 
-	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a char> where char: 'a {
+	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a char>
+	where
+		char: 'a,
+	{
 		self.iter()
 	}
 
@@ -106,12 +113,17 @@ impl Alphabet<CasedChar> for CasedAlphabet {
 		self.0.is_empty()
 	}
 
-	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a CasedChar> where CasedChar: 'a {
+	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a CasedChar>
+	where
+		CasedChar: 'a,
+	{
 		self.0.iter()
 	}
 
 	fn index_of(&self, char: char) -> Option<usize> {
-		self.0.iter().position(|x| x.upper == char || x.lower == char)
+		self.0
+			.iter()
+			.position(|x| x.upper == char || x.lower == char)
 	}
 
 	fn char_at(&self, index: usize) -> Option<CasedChar> {
@@ -120,3 +132,28 @@ impl Alphabet<CasedChar> for CasedAlphabet {
 }
 
 // impl ten alphabet<alphabet char dla tego> + impl dwie wersja algorytmu dla caesar cipher. use impl <Alphavbet<AlphavbetChar> for CasedAlphabet> blocks for tow impl blocks
+
+impl TryFrom<UncasedAlphabet> for CasedAlphabet {
+	type Error = CaseConversionError;
+
+	fn try_from(value: UncasedAlphabet) -> Result<Self, Self::Error> {
+		value.iter().copied().map(CasedChar::try_from).collect()
+	}
+}
+
+impl FromIterator<CasedChar> for CasedAlphabet {
+	fn from_iter<T: IntoIterator<Item = CasedChar>>(iter: T) -> Self {
+		Self(iter.into_iter().collect())
+	}
+}
+
+impl TryFrom<char> for CasedChar {
+	type Error = CaseConversionError;
+
+	fn try_from(value: char) -> Result<Self, Self::Error> {
+		value
+			.to_uppercase_char()
+			.and_then(|upper| value.to_lowercase_char().map(|lower| (upper, lower)))
+			.map(|(upper, lower)| CasedChar { upper, lower })
+	}
+}
