@@ -1,4 +1,4 @@
-use std::iter::once;
+use std::{iter::once, ops::Deref};
 
 use crate::alphabet::Alphabet;
 
@@ -56,17 +56,21 @@ pub enum CasedCharIndex {
 }
 
 impl CasedCharIndex {
-	pub fn index(&self) -> usize {
-		match self {
-			CasedCharIndex::Upper(i) => *i,
-			CasedCharIndex::Lower(i) => *i,
-		}
-	}
-
 	pub fn with_index(&self, index: usize) -> Self {
 		match self {
 			CasedCharIndex::Upper(_) => CasedCharIndex::Upper(index),
 			CasedCharIndex::Lower(_) => CasedCharIndex::Lower(index),
+		}
+	}
+}
+
+impl Deref for CasedCharIndex {
+	type Target = usize;
+
+	fn deref(&self) -> &Self::Target {
+		match self {
+			CasedCharIndex::Upper(i) => i,
+			CasedCharIndex::Lower(i) => i,
 		}
 	}
 }
@@ -79,6 +83,10 @@ pub struct CasedAlphabet {
 impl CasedAlphabet {
 	pub fn len(&self) -> usize {
 		self.upper.len()
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.upper.is_empty()
 	}
 
 	pub fn iter(&self) -> impl Iterator<Item = (CasedChar, CasedChar)> {
@@ -112,12 +120,12 @@ impl IntoIterator for CasedAlphabet {
 	fn into_iter(self) -> Self::IntoIter {
 		self.upper
 			.into_iter()
-			.map(|c| CasedChar::Upper(c))
-			.zip(self.lower.into_iter().map(|c| CasedChar::Lower(c)))
+			.map(CasedChar::Upper)
+			.zip(self.lower.into_iter().map(CasedChar::Lower))
 	}
 }
 
-impl<'a> IntoIterator for &'a CasedAlphabet {
+impl IntoIterator for &CasedAlphabet {
 	type Item = (CasedChar, CasedChar);
 	type IntoIter = impl Iterator<Item = Self::Item>;
 

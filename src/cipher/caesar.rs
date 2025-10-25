@@ -29,7 +29,7 @@ impl CaesarCipher {
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos| pos.with_index(pos.index().addm(self.offset, &self.alphabet.len())))
+			.map(|pos| pos.with_index(pos.addm(self.offset, &self.alphabet.len())))
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 	}
 
@@ -43,7 +43,7 @@ impl CaesarCipher {
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos| pos.with_index(pos.index().subm(self.offset, &self.alphabet.len())))
+			.map(|pos| pos.with_index(pos.subm(self.offset, &self.alphabet.len())))
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 	}
 }
