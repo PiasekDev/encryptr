@@ -1,21 +1,39 @@
 use num_modular::ModularCoreOps;
+use std::marker::PhantomData;
 
-use crate::alphabet::UncasedAlphabet;
+use crate::{
+	alphabet::{Alphabet, CasedChar, UncasedAlphabet},
+	char_ext::CharExt,
+};
 
-pub struct CaesarCipher {
-	alphabet: UncasedAlphabet,
+pub struct CaesarCipher<A, C>
+where
+	A: Alphabet<C>,
+{
+	alphabet: A,
 	offset: usize,
+	_marker: PhantomData<C>,
 }
 
-impl CaesarCipher {
+impl CaesarCipher<UncasedAlphabet, char> {
 	pub fn with_offset(offset: usize) -> Self {
 		CaesarCipher::new(UncasedAlphabet::default(), offset)
 	}
+}
 
-	pub fn new(alphabet: UncasedAlphabet, offset: usize) -> Self {
-		CaesarCipher { alphabet, offset }
+impl<A, C> CaesarCipher<A, C>
+where
+	A: Alphabet<C>,
+{
+	pub fn new(alphabet: A, offset: usize) -> Self {
+		CaesarCipher { alphabet, offset, _marker: PhantomData }
 	}
+}
 
+impl<A> CaesarCipher<A, char>
+where
+	A: Alphabet<char>,
+{
 	pub fn encode(&self, input: &str) -> String {
 		input
 			.chars()
@@ -42,6 +60,47 @@ impl CaesarCipher {
 			.index_of(*char)
 			.map(|pos| pos.subm(self.offset, &self.alphabet.len()))
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+	}
+}
+
+impl<A> CaesarCipher<A, CasedChar>
+where
+	A: Alphabet<CasedChar>,
+{
+	pub fn encode(&self, input: &str) -> String {
+		input
+			.chars()
+			.map(|c| self.encode_char(&c).unwrap_or(c))
+			.collect()
+	}
+
+	fn encode_char(&self, char: &char) -> Option<char> {
+		self.alphabet
+			.index_of(*char)
+			.map(|pos| pos.addm(self.offset, &self.alphabet.len()))
+			.and_then(|new_pos| {
+				self.alphabet
+					.char_at(new_pos)
+					.map(|c| char.case().map(|case| c.at_case(&case)).unwrap_or(*char))
+			})
+	}
+
+	pub fn decode(&self, input: &str) -> String {
+		input
+			.chars()
+			.map(|c| self.decode_char(&c).unwrap_or(c))
+			.collect()
+	}
+
+	fn decode_char(&self, char: &char) -> Option<char> {
+		self.alphabet
+			.index_of(*char)
+			.map(|pos| pos.subm(self.offset, &self.alphabet.len()))
+			.and_then(|new_pos| {
+				self.alphabet
+					.char_at(new_pos)
+					.map(|c| char.case().map(|case| c.at_case(&case)).unwrap_or(*char))
+			})
 	}
 }
 

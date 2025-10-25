@@ -1,4 +1,4 @@
-use crate::char_ext::{CaseConversionError, CharExt};
+use crate::char_ext::{CaseConversionError, CharCase, CharExt};
 
 pub trait Alphabet<C> {
 	fn len(&self) -> usize;
@@ -102,6 +102,15 @@ pub struct CasedAlphabet(Vec<CasedChar>);
 pub struct CasedChar {
 	upper: char,
 	lower: char,
+}
+
+impl CasedChar {
+	pub fn at_case(&self, case: &CharCase) -> char {
+		match case {
+			CharCase::Upper => self.upper,
+			CharCase::Lower => self.lower,
+		}
+	}
 }
 
 impl Alphabet<CasedChar> for CasedAlphabet {

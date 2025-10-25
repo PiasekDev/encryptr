@@ -7,7 +7,7 @@ pub enum CharCase {
 pub trait CharExt {
 	type ConversionError;
 
-	// fn case(&self) -> Option<CharCase>;
+	fn case(&self) -> Option<CharCase>;
 
 	// fn at_case(&self, case: &CharCase) -> Option<char>;
 
@@ -26,13 +26,13 @@ impl CharExt for char {
 	type ConversionError = CaseConversionError;
 
 	/// Returns the case of the character if it is cased (upper or lower).
-	// fn case(&self) -> Option<CharCase> {
-	// 	match self {
-	// 		c if c.to_uppercase_char().is_some() => Some(CharCase::Upper),
-	// 		c if c.to_lowercase_char().is_some() => Some(CharCase::Lower),
-	// 		_ => None,
-	// 	}
-	// }
+	fn case(&self) -> Option<CharCase> {
+		match self {
+			c if c.to_uppercase_char().is_ok() => Some(CharCase::Upper),
+			c if c.to_lowercase_char().is_ok() => Some(CharCase::Lower),
+			_ => None,
+		}
+	}
 
 	// /// Returns the character in the specified case if possible.
 	// fn at_case(&self, case: &CharCase) -> Option<char> {
