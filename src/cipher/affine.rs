@@ -36,7 +36,7 @@ impl AffineCipher {
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos| (self.a * pos + self.b) % self.alphabet.len())
+			.map(|pos| (self.a * *pos + self.b) % self.alphabet.len())
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 	}
 

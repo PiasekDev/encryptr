@@ -1,3 +1,7 @@
+use std::ops::Deref;
+
+use crate::cased_alphabet::CasedCharIndex;
+
 pub struct Alphabet(Vec<char>);
 
 impl Default for Alphabet {
@@ -27,12 +31,44 @@ impl Alphabet {
 		self.into_iter()
 	}
 
-	pub fn index_of(&self, c: char) -> Option<usize> {
-		self.0.iter().position(|&x| x == c)
+	pub fn index_of(&self, c: char) -> Option<AlphabetIndex> {
+		self.0.iter().position(|&x| x == c).map(AlphabetIndex::Simple)
 	}
 
 	pub fn char_at(&self, index: usize) -> Option<char> {
 		self.0.get(index).copied()
+	}
+}
+
+pub enum AlphabetIndex {
+	Simple(usize),
+	Cased(CasedCharIndex),
+}
+
+impl AlphabetIndex {
+	pub fn index(&self) -> usize {
+		match self {
+			AlphabetIndex::Simple(i) => *i,
+			AlphabetIndex::Cased(cased_index) => **cased_index,
+		}
+	}
+
+	pub fn with_index(&self, index: usize) -> Self {
+		match self {
+			AlphabetIndex::Simple(_) => AlphabetIndex::Simple(index),
+			AlphabetIndex::Cased(cased_index) => AlphabetIndex::Cased(cased_index.with_index(index)),
+		}
+	}
+}
+
+impl Deref for AlphabetIndex {
+	type Target = usize;
+
+	fn deref(&self) -> &Self::Target {
+		match self {
+			AlphabetIndex::Simple(i) => i,
+			AlphabetIndex::Cased(cased_index) => cased_index,
+		}
 	}
 }
 

@@ -1,9 +1,9 @@
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::{Alphabet, AlphabetIndex};
 
 pub struct VigenereCipher {
-	key: Vec<usize>,
+	key: Vec<AlphabetIndex>,
 	alphabet: Alphabet,
 }
 
@@ -36,7 +36,7 @@ impl VigenereCipher {
 				.alphabet
 				.index_of(char)
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
-				.map(|(position, key_offset)| position.addm(key_offset, &self.alphabet.len()))
+				.map(|(position, key_offset)| position.addm(**key_offset, &self.alphabet.len()))
 				.and_then(|new_pos| self.alphabet.char_at(new_pos))
 				.unwrap_or(char);
 
@@ -55,7 +55,7 @@ impl VigenereCipher {
 				.alphabet
 				.index_of(char)
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
-				.map(|(position, key_offset)| position.subm(key_offset, &self.alphabet.len()))
+				.map(|(position, key_offset)| position.subm(**key_offset, &self.alphabet.len()))
 				.and_then(|new_pos| self.alphabet.char_at(new_pos))
 				.unwrap_or(char);
 

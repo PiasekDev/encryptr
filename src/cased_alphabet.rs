@@ -1,6 +1,6 @@
 use std::{iter::once, ops::Deref};
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::{Alphabet, AlphabetIndex};
 
 #[derive(Debug)]
 pub enum CasedAlphabetError {
@@ -98,17 +98,24 @@ impl CasedAlphabet {
 			.flat_map(|(upper, lower)| once(upper).chain(once(lower)))
 	}
 
-	pub fn index_of(&self, c: char) -> Option<CasedCharIndex> {
+	pub fn index_of(&self, c: char) -> Option<AlphabetIndex> {
 		self.upper
 			.index_of(c)
-			.map(CasedCharIndex::Upper)
-			.or_else(|| self.lower.index_of(c).map(CasedCharIndex::Lower))
+			.map(|x| AlphabetIndex::Cased(CasedCharIndex::Upper(x.index())))
+			.or_else(|| {
+				self.lower
+					.index_of(c)
+					.map(|x| AlphabetIndex::Cased(CasedCharIndex::Lower(x.index())))
+			})
 	}
 
-	pub fn char_at(&self, index: CasedCharIndex) -> Option<char> {
+	pub fn char_at(&self, index: AlphabetIndex) -> Option<char> {
 		match index {
-			CasedCharIndex::Upper(i) => self.upper.char_at(i),
-			CasedCharIndex::Lower(i) => self.lower.char_at(i),
+			AlphabetIndex::Cased(cased_index) => match cased_index {
+				CasedCharIndex::Upper(i) => self.upper.char_at(i),
+				CasedCharIndex::Lower(i) => self.lower.char_at(i),
+			},
+			_ => None,
 		}
 	}
 }
