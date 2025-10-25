@@ -1,18 +1,18 @@
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::UncasedAlphabet;
 
 pub struct CaesarCipher {
-	alphabet: Alphabet,
+	alphabet: UncasedAlphabet,
 	offset: usize,
 }
 
 impl CaesarCipher {
 	pub fn with_offset(offset: usize) -> Self {
-		CaesarCipher::new(Alphabet::default(), offset)
+		CaesarCipher::new(UncasedAlphabet::default(), offset)
 	}
 
-	pub fn new(alphabet: Alphabet, offset: usize) -> Self {
+	pub fn new(alphabet: UncasedAlphabet, offset: usize) -> Self {
 		CaesarCipher { alphabet, offset }
 	}
 
@@ -69,7 +69,7 @@ mod tests {
 
 	#[test]
 	fn test_caesar_cipher_with_custom_alphabet_and_offset() {
-		let alphabet = Alphabet::polish();
+		let alphabet = UncasedAlphabet::polish();
 		let offset = 7;
 		let cipher = CaesarCipher::new(alphabet, offset);
 		let encoded = cipher.encode("CZEŚĆ");

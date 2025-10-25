@@ -1,10 +1,10 @@
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::UncasedAlphabet;
 
 pub struct VigenereCipher {
 	key: Vec<usize>,
-	alphabet: Alphabet,
+	alphabet: UncasedAlphabet,
 }
 
 #[derive(Debug)]
@@ -14,10 +14,10 @@ pub enum VigenereCipherError {
 
 impl VigenereCipher {
 	pub fn with_keyword(keyword: &str) -> Result<Self, VigenereCipherError> {
-		Self::new(Alphabet::default(), keyword)
+		Self::new(UncasedAlphabet::default(), keyword)
 	}
 
-	pub fn new(alphabet: Alphabet, keyword: &str) -> Result<Self, VigenereCipherError> {
+	pub fn new(alphabet: UncasedAlphabet, keyword: &str) -> Result<Self, VigenereCipherError> {
 		let key = keyword
 			.chars()
 			.map(|c| alphabet.index_of(c))

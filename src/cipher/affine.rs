@@ -1,11 +1,11 @@
 use num_modular::{ModularCoreOps, ModularUnaryOps};
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::UncasedAlphabet;
 
 pub struct AffineCipher {
 	a: usize,
 	b: usize,
-	alphabet: Alphabet,
+	alphabet: UncasedAlphabet,
 }
 
 #[derive(Debug)]
@@ -15,10 +15,10 @@ pub enum AffineCipherError {
 
 impl AffineCipher {
 	pub fn with_params(a: usize, b: usize) -> Result<Self, AffineCipherError> {
-		Self::new(Alphabet::default(), a, b)
+		Self::new(UncasedAlphabet::default(), a, b)
 	}
 
-	pub fn new(alphabet: Alphabet, a: usize, b: usize) -> Result<Self, AffineCipherError> {
+	pub fn new(alphabet: UncasedAlphabet, a: usize, b: usize) -> Result<Self, AffineCipherError> {
 		if a.invm(&alphabet.len()).is_none() {
 			return Err(AffineCipherError::InvalidAValue);
 		}
