@@ -31,8 +31,11 @@ impl Alphabet {
 		self.into_iter()
 	}
 
-	pub fn index_of(&self, c: char) -> Option<AlphabetIndex> {
-		self.0.iter().position(|&x| x == c).map(AlphabetIndex::Simple)
+	pub fn index_of(&self, c: char) -> Option<impl AlphabetIndex> {
+		self.0
+			.iter()
+			.position(|&x| x == c)
+			.map(|index| SimpleCharIndex(index))
 	}
 
 	pub fn char_at(&self, index: usize) -> Option<char> {
@@ -40,37 +43,52 @@ impl Alphabet {
 	}
 }
 
-pub enum AlphabetIndex {
-	Simple(usize),
-	Cased(CasedCharIndex),
+pub trait AlphabetIndex: Deref<Target = usize> {
+	fn with_index(&self, index: usize) -> Self;
 }
 
-impl AlphabetIndex {
-	pub fn index(&self) -> usize {
-		match self {
-			AlphabetIndex::Simple(i) => *i,
-			AlphabetIndex::Cased(cased_index) => **cased_index,
-		}
-	}
+pub struct SimpleCharIndex(usize);
 
-	pub fn with_index(&self, index: usize) -> Self {
-		match self {
-			AlphabetIndex::Simple(_) => AlphabetIndex::Simple(index),
-			AlphabetIndex::Cased(cased_index) => AlphabetIndex::Cased(cased_index.with_index(index)),
-		}
+impl AlphabetIndex for SimpleCharIndex {
+	fn with_index(&self, index: usize) -> Self {
+		SimpleCharIndex(index)
 	}
 }
 
-impl Deref for AlphabetIndex {
+impl Deref for SimpleCharIndex {
 	type Target = usize;
 
 	fn deref(&self) -> &Self::Target {
-		match self {
-			AlphabetIndex::Simple(i) => i,
-			AlphabetIndex::Cased(cased_index) => cased_index,
-		}
+		&self.0
 	}
 }
+
+// impl AlphabetIndex {
+// 	pub fn index(&self) -> usize {
+// 		match self {
+// 			AlphabetIndex::Simple(i) => *i,
+// 			AlphabetIndex::Cased(cased_index) => **cased_index,
+// 		}
+// 	}
+
+// 	pub fn with_index(&self, index: usize) -> Self {
+// 		match self {
+// 			AlphabetIndex::Simple(_) => AlphabetIndex::Simple(index),
+// 			AlphabetIndex::Cased(cased_index) => AlphabetIndex::Cased(cased_index.with_index(index)),
+// 		}
+// 	}
+// }
+
+// impl Deref for AlphabetIndex {
+// 	type Target = usize;
+
+// 	fn deref(&self) -> &Self::Target {
+// 		match self {
+// 			AlphabetIndex::Simple(i) => i,
+// 			AlphabetIndex::Cased(cased_index) => cased_index,
+// 		}
+// 	}
+// }
 
 impl IntoIterator for Alphabet {
 	type Item = char;

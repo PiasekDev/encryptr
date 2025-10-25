@@ -55,14 +55,23 @@ pub enum CasedCharIndex {
 	Lower(usize),
 }
 
-impl CasedCharIndex {
-	pub fn with_index(&self, index: usize) -> Self {
+impl AlphabetIndex for CasedCharIndex {
+	fn with_index(&self, index: usize) -> Self {
 		match self {
 			CasedCharIndex::Upper(_) => CasedCharIndex::Upper(index),
 			CasedCharIndex::Lower(_) => CasedCharIndex::Lower(index),
 		}
 	}
 }
+
+// impl CasedCharIndex {
+// 	pub fn with_index(&self, index: usize) -> Self {
+// 		match self {
+// 			CasedCharIndex::Upper(_) => CasedCharIndex::Upper(index),
+// 			CasedCharIndex::Lower(_) => CasedCharIndex::Lower(index),
+// 		}
+// 	}
+// }
 
 impl Deref for CasedCharIndex {
 	type Target = usize;
@@ -98,20 +107,20 @@ impl CasedAlphabet {
 			.flat_map(|(upper, lower)| once(upper).chain(once(lower)))
 	}
 
-	pub fn index_of(&self, c: char) -> Option<AlphabetIndex> {
+	pub fn index_of(&self, c: char) -> Option<impl AlphabetIndex> {
 		self.upper
 			.index_of(c)
-			.map(|x| AlphabetIndex::Cased(CasedCharIndex::Upper(x.index())))
+			.map(|x| CasedCharIndex::Upper(*x))
 			.or_else(|| {
 				self.lower
 					.index_of(c)
-					.map(|x| AlphabetIndex::Cased(CasedCharIndex::Lower(x.index())))
+					.map(|x| CasedCharIndex::Lower(*x))
 			})
 	}
 
-	pub fn char_at(&self, index: AlphabetIndex) -> Option<char> {
+	pub fn char_at(&self, index: impl AlphabetIndex) -> Option<char> {
 		match index {
-			AlphabetIndex::Cased(cased_index) => match cased_index {
+			AlphabetIndex::Cased(cased_index) => match cased_index { // TODO: how to keep the information what type of index it is?
 				CasedCharIndex::Upper(i) => self.upper.char_at(i),
 				CasedCharIndex::Lower(i) => self.lower.char_at(i),
 			},
