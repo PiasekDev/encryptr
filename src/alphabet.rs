@@ -166,9 +166,9 @@ impl TryFrom<char> for CasedChar {
 	type Error = CaseConversionError;
 
 	fn try_from(value: char) -> Result<Self, Self::Error> {
-		value
-			.to_uppercase_char()
-			.and_then(|upper| value.to_lowercase_char().map(|lower| (upper, lower)))
-			.map(|(upper, lower)| CasedChar { upper, lower })
+		let upper = value.to_uppercase_char()?;
+		let lower = value.to_lowercase_char()?;
+
+		Ok(CasedChar { upper, lower })
 	}
 }
