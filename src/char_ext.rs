@@ -28,8 +28,8 @@ impl CharExt for char {
 	/// Returns the case of the character if it is cased (upper or lower).
 	fn case(&self) -> Option<CharCase> {
 		match self {
-			c if c.to_uppercase_char().is_ok() => Some(CharCase::Upper),
-			c if c.to_lowercase_char().is_ok() => Some(CharCase::Lower),
+			c if c.is_uppercase() && c.to_uppercase_char().is_ok() => Some(CharCase::Upper),
+			c if c.is_lowercase() && c.to_lowercase_char().is_ok() => Some(CharCase::Lower),
 			_ => None,
 		}
 	}

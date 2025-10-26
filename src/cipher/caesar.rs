@@ -128,6 +128,8 @@ mod cased {
 
 #[cfg(test)]
 mod tests {
+	use crate::alphabet::CasedAlphabet;
+
 	use super::*;
 
 	#[test]
@@ -157,5 +159,15 @@ mod tests {
 		assert_eq!(encoded, "HĆKŻI");
 		let decoded = cipher.decode(&encoded);
 		assert_eq!(decoded, "CZEŚĆ");
+	}
+
+	#[test]
+	fn test_caesar_cipher_with_mixed_case_letters() {
+		let cipher: CaesarCipher<CasedAlphabet> =
+			CaesarCipher::new(UncasedAlphabet::default().try_into().unwrap(), 3);
+		let encoded = cipher.encode("tHe quIcK BrOwN fOx jUmPeD OvEr ThE LaZy DoG.");
+		assert_eq!(encoded, "wKh txLfN EuRzQ iRa mXpShG RyHu WkH OdCb GrJ.");
+		let decoded = cipher.decode(&encoded);
+		assert_eq!(decoded, "tHe quIcK BrOwN fOx jUmPeD OvEr ThE LaZy DoG.");
 	}
 }
