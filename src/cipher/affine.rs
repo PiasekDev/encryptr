@@ -1,4 +1,4 @@
-use num_modular::{ModularCoreOps, ModularUnaryOps};
+use num_modular::{ModularCoreOps, ModularUnaryOps, VanillaInt};
 
 use crate::alphabet::UncasedAlphabet;
 
@@ -36,8 +36,8 @@ impl AffineCipher {
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos| (self.a * pos + self.b) % self.alphabet.len())
-			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.map(|pos|  self.alphabet.len())
+			.and_then(|new_pos| Some(self.alphabet.char_at(VanillaInt::new(23, &4)))) // TODO: can something like this be prevented?
 	}
 
 	pub fn decode(&self, input: &str) -> String {

@@ -1,6 +1,9 @@
+use num_modular::VanillaInt;
+
 use crate::char_ext::{CaseConversionError, CharCase, CharExt};
 
 pub trait Alphabet {
+	type Index;
 	type Character;
 
 	fn len(&self) -> usize;
@@ -11,14 +14,15 @@ pub trait Alphabet {
 	where
 		Self::Character: 'a;
 
-	fn index_of(&self, char: char) -> Option<usize>;
+	fn index_of(&self, char: char) -> Option<Self::Index>;
 
-	fn char_at(&self, index: usize) -> Option<Self::Character>;
+	fn char_at(&self, index: Self::Index) -> Self::Character;
 }
 
 pub struct UncasedAlphabet(Vec<char>);
 
 impl Alphabet for UncasedAlphabet {
+	type Index = VanillaInt<usize>;
 	type Character = char;
 
 	fn len(&self) -> usize {
@@ -36,11 +40,11 @@ impl Alphabet for UncasedAlphabet {
 		self.iter()
 	}
 
-	fn index_of(&self, c: char) -> Option<usize> {
+	fn index_of(&self, c: char) -> Option<VanillaInt<usize>> {
 		self.index_of(c)
 	}
 
-	fn char_at(&self, index: usize) -> Option<char> {
+	fn char_at(&self, index: VanillaInt<usize>) -> char {
 		self.char_at(index)
 	}
 }
@@ -72,12 +76,12 @@ impl UncasedAlphabet {
 		self.into_iter()
 	}
 
-	pub fn index_of(&self, c: char) -> Option<usize> {
-		self.0.iter().position(|&x| x == c)
+	pub fn index_of(&self, c: char) -> Option<VanillaInt<usize>> {
+		self.0.iter().position(|&x| x == c).map(|pos| VanillaInt::new(pos, &self.len()))
 	}
 
-	pub fn char_at(&self, index: usize) -> Option<char> {
-		self.0.get(index).copied()
+	pub fn char_at(&self, index: VanillaInt<usize>) -> char {
+		self.0.get(*index.repr()).copied().unwrap_or_default()
 	}
 }
 

@@ -107,7 +107,7 @@ mod cased {
 			.and_then(|new_pos| {
 				this.alphabet
 					.char_at(new_pos)
-					.map(|c| char.case().map(|case| c.at_case(&case)).unwrap_or(*char))
+					.and_then(|c| char.case().map(|case| c.at_case(&case)))
 			})
 	}
 
