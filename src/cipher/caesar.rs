@@ -1,103 +1,122 @@
 use num_modular::ModularCoreOps;
-use std::marker::PhantomData;
 
 use crate::{
-	alphabet::{Alphabet, CasedChar, UncasedAlphabet},
+	alphabet::{Alphabet, UncasedAlphabet},
 	char_ext::CharExt,
+	cipher::Cipher,
 };
 
-pub struct CaesarCipher<A, C>
-where
-	A: Alphabet<C>,
-{
+pub struct CaesarCipher<A> {
 	alphabet: A,
 	offset: usize,
-	_marker: PhantomData<C>,
 }
 
-impl CaesarCipher<UncasedAlphabet, char> {
+impl CaesarCipher<UncasedAlphabet> {
 	pub fn with_offset(offset: usize) -> Self {
 		CaesarCipher::new(UncasedAlphabet::default(), offset)
 	}
 }
 
-impl<A, C> CaesarCipher<A, C>
-where
-	A: Alphabet<C>,
-{
+impl<A> CaesarCipher<A> {
 	pub fn new(alphabet: A, offset: usize) -> Self {
-		CaesarCipher { alphabet, offset, _marker: PhantomData }
+		CaesarCipher { alphabet, offset }
 	}
 }
 
-impl<A> CaesarCipher<A, char>
-where
-	A: Alphabet<char>,
-{
-	pub fn encode(&self, input: &str) -> String {
-		input
-			.chars()
-			.map(|c| self.encode_char(&c).unwrap_or(c))
-			.collect()
+mod uncased {
+	use num_modular::ModularCoreOps;
+
+	use crate::alphabet::{Alphabet, UncasedAlphabet};
+
+	use super::CaesarCipher;
+
+	use crate::cipher::Cipher;
+
+	impl Cipher for CaesarCipher<UncasedAlphabet> {
+		fn encode(&self, input: &str) -> String {
+			input
+				.chars()
+				.map(|c| encode_char(self, &c).unwrap_or(c))
+				.collect()
+		}
+
+		fn decode(&self, input: &str) -> String {
+			input
+				.chars()
+				.map(|c| decode_char(self, &c).unwrap_or(c))
+				.collect()
+		}
 	}
 
-	fn encode_char(&self, char: &char) -> Option<char> {
-		self.alphabet
+	pub(crate) fn encode_char(
+		this: &CaesarCipher<impl Alphabet<char>>,
+		char: &char,
+	) -> Option<char> {
+		this.alphabet
 			.index_of(*char)
-			.map(|pos| pos.addm(self.offset, &self.alphabet.len()))
-			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
+			.and_then(|new_pos| this.alphabet.char_at(new_pos))
 	}
 
-	pub fn decode(&self, input: &str) -> String {
-		input
-			.chars()
-			.map(|c| self.decode_char(&c).unwrap_or(c))
-			.collect()
-	}
-
-	fn decode_char(&self, char: &char) -> Option<char> {
-		self.alphabet
+	pub(crate) fn decode_char(
+		this: &CaesarCipher<impl Alphabet<char>>,
+		char: &char,
+	) -> Option<char> {
+		this.alphabet
 			.index_of(*char)
-			.map(|pos| pos.subm(self.offset, &self.alphabet.len()))
-			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
+			.and_then(|new_pos| this.alphabet.char_at(new_pos))
 	}
 }
 
-impl<A> CaesarCipher<A, CasedChar>
-where
-	A: Alphabet<CasedChar>,
-{
-	pub fn encode(&self, input: &str) -> String {
-		input
-			.chars()
-			.map(|c| self.encode_char(&c).unwrap_or(c))
-			.collect()
+mod cased {
+	use num_modular::ModularCoreOps;
+
+	use crate::alphabet::{Alphabet, CasedAlphabet, CasedChar};
+
+	use crate::char_ext::CharExt;
+	use crate::cipher::Cipher;
+	use crate::cipher::caesar::CaesarCipher;
+
+	impl Cipher for CaesarCipher<CasedAlphabet> {
+		fn encode(&self, input: &str) -> String {
+			input
+				.chars()
+				.map(|c| encode_char(self, &c).unwrap_or(c))
+				.collect()
+		}
+
+		fn decode(&self, input: &str) -> String {
+			input
+				.chars()
+				.map(|c| decode_char(self, &c).unwrap_or(c))
+				.collect()
+		}
 	}
 
-	fn encode_char(&self, char: &char) -> Option<char> {
-		self.alphabet
+	pub(crate) fn encode_char(
+		this: &CaesarCipher<impl Alphabet<CasedChar>>,
+		char: &char,
+	) -> Option<char> {
+		this.alphabet
 			.index_of(*char)
-			.map(|pos| pos.addm(self.offset, &self.alphabet.len()))
+			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| {
-				self.alphabet
+				this.alphabet
 					.char_at(new_pos)
 					.map(|c| char.case().map(|case| c.at_case(&case)).unwrap_or(*char))
 			})
 	}
 
-	pub fn decode(&self, input: &str) -> String {
-		input
-			.chars()
-			.map(|c| self.decode_char(&c).unwrap_or(c))
-			.collect()
-	}
-
-	fn decode_char(&self, char: &char) -> Option<char> {
-		self.alphabet
+	pub(crate) fn decode_char(
+		this: &CaesarCipher<impl Alphabet<CasedChar>>,
+		char: &char,
+	) -> Option<char> {
+		this.alphabet
 			.index_of(*char)
-			.map(|pos| pos.subm(self.offset, &self.alphabet.len()))
+			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| {
-				self.alphabet
+				this.alphabet
 					.char_at(new_pos)
 					.map(|c| char.case().map(|case| c.at_case(&case)).unwrap_or(*char))
 			})
