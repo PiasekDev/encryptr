@@ -1,22 +1,26 @@
 use crate::char_ext::{CaseConversionError, CharCase, CharExt};
 
-pub trait Alphabet<C> {
+pub trait Alphabet {
+	type Character;
+
 	fn len(&self) -> usize;
 
 	fn is_empty(&self) -> bool;
 
-	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a C>
+	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Self::Character>
 	where
-		C: 'a;
+		Self::Character: 'a;
 
 	fn index_of(&self, char: char) -> Option<usize>;
 
-	fn char_at(&self, index: usize) -> Option<C>;
+	fn char_at(&self, index: usize) -> Option<Self::Character>;
 }
 
 pub struct UncasedAlphabet(Vec<char>);
 
-impl Alphabet<char> for UncasedAlphabet {
+impl Alphabet for UncasedAlphabet {
+	type Character = char;
+
 	fn len(&self) -> usize {
 		self.len()
 	}
@@ -113,7 +117,9 @@ impl CasedChar {
 	}
 }
 
-impl Alphabet<CasedChar> for CasedAlphabet {
+impl Alphabet for CasedAlphabet {
+	type Character = CasedChar;
+
 	fn len(&self) -> usize {
 		self.0.len()
 	}

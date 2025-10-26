@@ -1,12 +1,13 @@
+use disjoint_impls::disjoint_impls;
 use num_modular::ModularCoreOps;
 
 use crate::{
-	alphabet::{Alphabet, UncasedAlphabet},
+	alphabet::{Alphabet, CasedChar, UncasedAlphabet},
 	char_ext::CharExt,
 	cipher::Cipher,
 };
 
-pub struct CaesarCipher<A> {
+pub struct CaesarCipher<A: Alphabet> {
 	alphabet: A,
 	offset: usize,
 }
@@ -17,39 +18,63 @@ impl CaesarCipher<UncasedAlphabet> {
 	}
 }
 
-impl<A> CaesarCipher<A> {
+impl<A: Alphabet> CaesarCipher<A> {
 	pub fn new(alphabet: A, offset: usize) -> Self {
 		CaesarCipher { alphabet, offset }
 	}
 }
 
-mod uncased {
-	use num_modular::ModularCoreOps;
+disjoint_impls! {
+	#[disjoint_impls(remote)]
+	pub trait Cipher {
+		fn encode(&self, input: &str) -> String;
+		fn decode(&self, input: &str) -> String;
+	}
 
-	use crate::alphabet::{Alphabet, UncasedAlphabet};
-
-	use super::CaesarCipher;
-
-	use crate::cipher::Cipher;
-
-	impl Cipher for CaesarCipher<UncasedAlphabet> {
+	impl<A> Cipher for CaesarCipher<A>
+	where
+		A: Alphabet<Character = char>,
+	{
 		fn encode(&self, input: &str) -> String {
 			input
 				.chars()
-				.map(|c| encode_char(self, &c).unwrap_or(c))
+				.map(|c| uncased::encode_char(self, &c).unwrap_or(c))
 				.collect()
 		}
 
 		fn decode(&self, input: &str) -> String {
 			input
 				.chars()
-				.map(|c| decode_char(self, &c).unwrap_or(c))
+				.map(|c| uncased::decode_char(self, &c).unwrap_or(c))
 				.collect()
 		}
 	}
 
+	impl<A> Cipher for CaesarCipher<A>
+	where
+		A: Alphabet<Character = CasedChar>,
+	{
+		fn encode(&self, input: &str) -> String {
+			input
+				.chars()
+				.map(|c| cased::encode_char(self, &c).unwrap_or(c))
+				.collect()
+		}
+
+		fn decode(&self, input: &str) -> String {
+			input
+				.chars()
+				.map(|c| cased::decode_char(self, &c).unwrap_or(c))
+				.collect()
+		}
+	}
+}
+
+mod uncased {
+	use super::*;
+
 	pub(crate) fn encode_char(
-		this: &CaesarCipher<impl Alphabet<char>>,
+		this: &CaesarCipher<impl Alphabet<Character = char>>,
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
@@ -59,7 +84,7 @@ mod uncased {
 	}
 
 	pub(crate) fn decode_char(
-		this: &CaesarCipher<impl Alphabet<char>>,
+		this: &CaesarCipher<impl Alphabet<Character = char>>,
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
@@ -70,32 +95,10 @@ mod uncased {
 }
 
 mod cased {
-	use num_modular::ModularCoreOps;
-
-	use crate::alphabet::{Alphabet, CasedAlphabet, CasedChar};
-
-	use crate::char_ext::CharExt;
-	use crate::cipher::Cipher;
-	use crate::cipher::caesar::CaesarCipher;
-
-	impl Cipher for CaesarCipher<CasedAlphabet> {
-		fn encode(&self, input: &str) -> String {
-			input
-				.chars()
-				.map(|c| encode_char(self, &c).unwrap_or(c))
-				.collect()
-		}
-
-		fn decode(&self, input: &str) -> String {
-			input
-				.chars()
-				.map(|c| decode_char(self, &c).unwrap_or(c))
-				.collect()
-		}
-	}
+	use super::*;
 
 	pub(crate) fn encode_char(
-		this: &CaesarCipher<impl Alphabet<CasedChar>>,
+		this: &CaesarCipher<impl Alphabet<Character = CasedChar>>,
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
@@ -109,7 +112,7 @@ mod cased {
 	}
 
 	pub(crate) fn decode_char(
-		this: &CaesarCipher<impl Alphabet<CasedChar>>,
+		this: &CaesarCipher<impl Alphabet<Character = CasedChar>>,
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
