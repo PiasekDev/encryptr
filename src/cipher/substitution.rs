@@ -1,6 +1,6 @@
 use bimap::BiMap;
 
-use crate::alphabet::UncasedAlphabet;
+use crate::alphabet::Alphabet;
 
 pub struct SubstitutionCipher {
 	mapping: BiMap<char, char>,
@@ -12,10 +12,10 @@ pub enum SubstitutionCipherError {
 }
 
 impl SubstitutionCipher {
-	pub fn new(
-		alphabet: UncasedAlphabet,
-		mapping_alphabet: UncasedAlphabet,
-	) -> Result<Self, SubstitutionCipherError> {
+	pub fn new<A>(alphabet: A, mapping_alphabet: A) -> Result<Self, SubstitutionCipherError>
+	where
+		A: Alphabet<Character = char> + IntoIterator<Item = char>,
+	{
 		if alphabet.len() != mapping_alphabet.len() {
 			return Err(SubstitutionCipherError::InvalidMappingLength);
 		}
@@ -41,12 +41,14 @@ impl SubstitutionCipher {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+	use crate::alphabet::StaticAlphabet;
+
+use super::*;
 
 	#[test]
 	fn test_substitution_cipher() {
-		let alphabet = UncasedAlphabet::default();
-		let mapping_alphabet = UncasedAlphabet::new("QWERTYUIOPASDFGHJKLZXCVBNM");
+		let alphabet = StaticAlphabet::default();
+		let mapping_alphabet = StaticAlphabet::new("QWERTYUIOPASDFGHJKLZXCVBNM").expect("String length should match alphabet size");
 		let cipher = SubstitutionCipher::new(alphabet, mapping_alphabet).unwrap();
 
 		let encoded = cipher.encode("HELLO");

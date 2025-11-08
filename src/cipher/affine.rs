@@ -1,11 +1,11 @@
-use num_modular::{ModularCoreOps, ModularUnaryOps, VanillaInt};
+use num_modular::ModularUnaryOps;
 
-use crate::alphabet::UncasedAlphabet;
+use crate::alphabet::{Alphabet, StaticAlphabet};
 
-pub struct AffineCipher {
+pub struct AffineCipher<A: Alphabet> {
 	a: usize,
 	b: usize,
-	alphabet: UncasedAlphabet,
+	alphabet: A,
 }
 
 #[derive(Debug)]
@@ -13,12 +13,16 @@ pub enum AffineCipherError {
 	InvalidAValue,
 }
 
-impl AffineCipher {
+impl AffineCipher<StaticAlphabet<char, 26>> {
 	pub fn with_params(a: usize, b: usize) -> Result<Self, AffineCipherError> {
-		Self::new(UncasedAlphabet::default(), a, b)
+		Self::new(StaticAlphabet::default(), a, b)
 	}
 
-	pub fn new(alphabet: UncasedAlphabet, a: usize, b: usize) -> Result<Self, AffineCipherError> {
+	pub fn new(
+		alphabet: StaticAlphabet<char, 26>,
+		a: usize,
+		b: usize,
+	) -> Result<Self, AffineCipherError> {
 		if a.invm(&alphabet.len()).is_none() {
 			return Err(AffineCipherError::InvalidAValue);
 		}
@@ -36,8 +40,8 @@ impl AffineCipher {
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos|  self.alphabet.len())
-			.and_then(|new_pos| Some(self.alphabet.char_at(VanillaInt::new(23, &4)))) // TODO: can something like this be prevented?
+			.map(|pos| pos * self.a + self.b)
+			.map(|new_pos| *self.alphabet.char_at(new_pos))
 	}
 
 	pub fn decode(&self, input: &str) -> String {
@@ -50,12 +54,8 @@ impl AffineCipher {
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(*char)
-			.map(|pos| {
-				(self.a.invm(&self.alphabet.len()).unwrap()
-					* pos.subm(self.b, &self.alphabet.len()))
-					% self.alphabet.len()
-			})
-			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.map(|pos| (pos - self.b) * self.a.invm(&self.alphabet.len()).unwrap())
+			.map(|new_pos| *self.alphabet.char_at(new_pos))
 	}
 }
 

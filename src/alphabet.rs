@@ -1,9 +1,10 @@
+use std::ops::{Add, Mul, Sub};
+
 use num_modular::VanillaInt;
 
 use crate::char_ext::{CaseConversionError, CharCase, CharExt};
 
-pub trait Alphabet {
-	type Index;
+pub trait Alphabet: IntoIterator<Item = Self::Character> {
 	type Character;
 
 	fn len(&self) -> usize;
@@ -14,89 +15,25 @@ pub trait Alphabet {
 	where
 		Self::Character: 'a;
 
-	fn index_of(&self, char: char) -> Option<Self::Index>;
+	fn index_of(&self, char: char) -> Option<usize>;
 
-	fn char_at(&self, index: Self::Index) -> Self::Character;
+	fn char_at(&self, index: usize) -> Option<&Self::Character>;
 }
 
-pub struct UncasedAlphabet(Vec<char>);
+pub struct DynamicAlphabet<T>(Vec<T>);
 
-impl Alphabet for UncasedAlphabet {
-	type Index = VanillaInt<usize>;
-	type Character = char;
-
-	fn len(&self) -> usize {
-		self.len()
-	}
-
-	fn is_empty(&self) -> bool {
-		self.is_empty()
-	}
-
-	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a char>
-	where
-		char: 'a,
-	{
-		self.iter()
-	}
-
-	fn index_of(&self, c: char) -> Option<VanillaInt<usize>> {
-		self.index_of(c)
-	}
-
-	fn char_at(&self, index: VanillaInt<usize>) -> char {
-		self.char_at(index)
-	}
-}
-
-impl Default for UncasedAlphabet {
-	fn default() -> Self {
-		Self::new("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	}
-}
-
-impl UncasedAlphabet {
-	pub fn new(s: &str) -> Self {
-		UncasedAlphabet(s.chars().collect())
-	}
-
-	pub fn polish() -> Self {
-		Self::new("AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ")
-	}
-
-	pub fn len(&self) -> usize {
-		self.0.len()
-	}
-
-	pub fn is_empty(&self) -> bool {
-		self.0.is_empty()
-	}
-
-	pub fn iter(&self) -> impl Iterator<Item = &char> {
-		self.into_iter()
-	}
-
-	pub fn index_of(&self, c: char) -> Option<VanillaInt<usize>> {
-		self.0.iter().position(|&x| x == c).map(|pos| VanillaInt::new(pos, &self.len()))
-	}
-
-	pub fn char_at(&self, index: VanillaInt<usize>) -> char {
-		self.0.get(*index.repr()).copied().unwrap_or_default()
-	}
-}
-
-impl IntoIterator for UncasedAlphabet {
-	type Item = char;
-	type IntoIter = std::vec::IntoIter<char>;
+impl<T> IntoIterator for DynamicAlphabet<T> {
+	type Item = T;
+	type IntoIter = std::vec::IntoIter<T>;
 
 	fn into_iter(self) -> Self::IntoIter {
 		self.0.into_iter()
 	}
 }
 
-impl<'a> IntoIterator for &'a UncasedAlphabet {
-	type Item = &'a char;
-	type IntoIter = std::slice::Iter<'a, char>;
+impl<'a, T> IntoIterator for &'a DynamicAlphabet<T> {
+	type Item = &'a T;
+	type IntoIter = std::slice::Iter<'a, T>;
 
 	#[inline]
 	fn into_iter(self) -> Self::IntoIter {
@@ -104,12 +41,214 @@ impl<'a> IntoIterator for &'a UncasedAlphabet {
 	}
 }
 
-pub struct CasedAlphabet(Vec<CasedChar>);
+impl<T: PartialEq<char>> Alphabet for DynamicAlphabet<T> {
+	type Character = T;
 
-#[derive(Debug, Copy, Clone)]
+	fn len(&self) -> usize {
+		self.0.len()
+	}
+
+	fn is_empty(&self) -> bool {
+		self.0.is_empty()
+	}
+
+	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
+	where
+		T: 'a,
+	{
+		self.0.iter()
+	}
+
+	fn index_of(&self, c: char) -> Option<usize> {
+		self.0.iter().position(|x| *x == c)
+	}
+
+	fn char_at(&self, index: usize) -> Option<&Self::Character> {
+		self.0.get(index)
+	}
+}
+
+pub struct StaticAlphabet<T, const N: usize>([T; N]);
+
+impl Default for StaticAlphabet<char, 26> {
+	fn default() -> Self {
+		Self(
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+				.chars()
+				.collect::<Vec<char>>()
+				.try_into()
+				.expect("Alphabet length should be 26"),
+		)
+	}
+}
+
+impl StaticAlphabet<CasedChar, 26> {
+	pub fn default_cased() -> Self {
+		Self::try_from(StaticAlphabet::default()).expect("All chars in the default alphabet should be able to be cased")
+	}
+}
+
+impl<const N: usize> TryFrom<StaticAlphabet<char, N>> for StaticAlphabet<CasedChar, N> {
+	type Error = CaseConversionError;
+
+	fn try_from(value: StaticAlphabet<char, N>) -> Result<Self, Self::Error> {
+		let chars: Vec<CasedChar> = value
+			.iter()
+			.copied()
+			.map(CasedChar::try_from)
+			.collect::<Result<_, _>>()?;
+
+		Ok(Self(
+			chars
+				.try_into()
+				.expect("The length of the alphabets should match"),
+		))
+	}
+}
+
+impl StaticAlphabet<char, 32> {
+	pub fn polish() -> Self {
+		Self(
+			"AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ"
+				.chars()
+				.collect::<Vec<char>>()
+				.try_into()
+				.expect("Alphabet length should be 32"),
+		)
+	}
+}
+
+#[derive(Debug)]
+pub enum StaticAlphabetError {
+	LengthMismatch { expected: usize, got: usize },
+}
+
+impl<const N: usize> StaticAlphabet<char, N> {
+	pub fn new(s: &str) -> Result<Self, StaticAlphabetError> {
+		let chars: Vec<char> = s.chars().collect();
+
+		if chars.len() != N {
+			return Err(StaticAlphabetError::LengthMismatch {
+				expected: N,
+				got: chars.len(),
+			});
+		}
+
+		Ok(Self(
+			chars
+				.try_into()
+				.expect("String length should match alphabet size"),
+		))
+	}
+}
+
+impl<T, const N: usize> IntoIterator for StaticAlphabet<T, N> {
+	type Item = T;
+	type IntoIter = std::array::IntoIter<T, N>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.0.into_iter()
+	}
+}
+
+impl<'a, T, const N: usize> IntoIterator for &'a StaticAlphabet<T, N> {
+	type Item = &'a T;
+	type IntoIter = core::slice::Iter<'a, T>;
+
+	#[inline]
+	fn into_iter(self) -> Self::IntoIter {
+		self.0.iter()
+	}
+}
+
+impl<T: PartialEq + PartialEq<char>, const N: usize> Alphabet for StaticAlphabet<T, N> {
+	type Character = T;
+
+	fn len(&self) -> usize {
+		N
+	}
+
+	fn is_empty(&self) -> bool {
+		N == 0
+	}
+
+	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
+	where
+		T: 'a,
+	{
+		self.0.iter()
+	}
+
+	fn index_of(&self, c: char) -> Option<usize> {
+		self.0.iter().position(|x| *x == c)
+	}
+
+	fn char_at(&self, index: usize) -> Option<&Self::Character> {
+		self.0.get(index)
+	}
+}
+
+pub struct ModularIndex<const N: usize>(VanillaInt<usize>);
+
+impl<const N: usize> ModularIndex<N> {
+	pub fn inner(&self) -> usize {
+		*self.0.repr()
+	}
+}
+
+// NOTE: Deref does not auto implement the traits, so this is therefore necessary
+impl<const N: usize> Mul<usize> for ModularIndex<N> {
+	type Output = ModularIndex<N>;
+
+	fn mul(self, rhs: usize) -> Self::Output {
+		ModularIndex(self.0 * rhs)
+	}
+}
+
+impl<const N: usize> Add<usize> for ModularIndex<N> {
+	type Output = ModularIndex<N>;
+
+	fn add(self, rhs: usize) -> Self::Output {
+		ModularIndex(self.0 + rhs)
+	}
+}
+
+impl<const N: usize> Sub<usize> for ModularIndex<N> {
+	type Output = ModularIndex<N>;
+
+	fn sub(self, rhs: usize) -> Self::Output {
+		ModularIndex(self.0 - rhs)
+	}
+}
+
+impl<T: PartialEq + PartialEq<char>, const N: usize> StaticAlphabet<T, N> {
+	pub fn index_of(&self, c: char) -> Option<ModularIndex<N>> {
+		self.0
+			.iter()
+			.position(|x| *x == c)
+			.map(|index| ModularIndex(VanillaInt::new(index, &N)))
+	}
+
+	pub fn char_at(
+		&self,
+		index: ModularIndex<N>,
+	) -> &<StaticAlphabet<T, N> as Alphabet>::Character {
+		self.0
+			.get(index.inner())
+			.expect("The index value should be in array bounds")
+	}
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct CasedChar {
 	upper: char,
 	lower: char,
+}
+
+impl PartialEq<char> for CasedChar {
+	fn eq(&self, other: &char) -> bool {
+		self.upper == *other || self.lower == *other
+	}
 }
 
 impl CasedChar {
@@ -118,51 +257,6 @@ impl CasedChar {
 			CharCase::Upper => self.upper,
 			CharCase::Lower => self.lower,
 		}
-	}
-}
-
-impl Alphabet for CasedAlphabet {
-	type Character = CasedChar;
-
-	fn len(&self) -> usize {
-		self.0.len()
-	}
-
-	fn is_empty(&self) -> bool {
-		self.0.is_empty()
-	}
-
-	fn iter<'a>(&'a self) -> impl Iterator<Item = &'a CasedChar>
-	where
-		CasedChar: 'a,
-	{
-		self.0.iter()
-	}
-
-	fn index_of(&self, char: char) -> Option<usize> {
-		self.0
-			.iter()
-			.position(|x| x.upper == char || x.lower == char)
-	}
-
-	fn char_at(&self, index: usize) -> Option<CasedChar> {
-		self.0.get(index).copied()
-	}
-}
-
-// impl ten alphabet<alphabet char dla tego> + impl dwie wersja algorytmu dla caesar cipher. use impl <Alphavbet<AlphavbetChar> for CasedAlphabet> blocks for tow impl blocks
-
-impl TryFrom<UncasedAlphabet> for CasedAlphabet {
-	type Error = CaseConversionError;
-
-	fn try_from(value: UncasedAlphabet) -> Result<Self, Self::Error> {
-		value.iter().copied().map(CasedChar::try_from).collect()
-	}
-}
-
-impl FromIterator<CasedChar> for CasedAlphabet {
-	fn from_iter<T: IntoIterator<Item = CasedChar>>(iter: T) -> Self {
-		Self(iter.into_iter().collect())
 	}
 }
 

@@ -2,7 +2,7 @@ use disjoint_impls::disjoint_impls;
 use num_modular::ModularCoreOps;
 
 use crate::{
-	alphabet::{Alphabet, CasedChar, UncasedAlphabet},
+	alphabet::{Alphabet, CasedChar, StaticAlphabet},
 	char_ext::CharExt,
 	cipher::Cipher,
 };
@@ -12,9 +12,9 @@ pub struct CaesarCipher<A: Alphabet> {
 	offset: usize,
 }
 
-impl CaesarCipher<UncasedAlphabet> {
+impl CaesarCipher<StaticAlphabet<char, 26>> {
 	pub fn with_offset(offset: usize) -> Self {
-		CaesarCipher::new(UncasedAlphabet::default(), offset)
+		CaesarCipher::new(StaticAlphabet::default(), offset)
 	}
 }
 
@@ -81,6 +81,7 @@ mod uncased {
 			.index_of(*char)
 			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| this.alphabet.char_at(new_pos))
+			.cloned()
 	}
 
 	pub(crate) fn decode_char(
@@ -91,6 +92,7 @@ mod uncased {
 			.index_of(*char)
 			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| this.alphabet.char_at(new_pos))
+			.cloned()
 	}
 }
 
@@ -128,8 +130,6 @@ mod cased {
 
 #[cfg(test)]
 mod tests {
-	use crate::alphabet::CasedAlphabet;
-
 	use super::*;
 
 	#[test]
@@ -152,7 +152,7 @@ mod tests {
 
 	#[test]
 	fn test_caesar_cipher_with_custom_alphabet_and_offset() {
-		let alphabet = UncasedAlphabet::polish();
+		let alphabet = StaticAlphabet::polish();
 		let offset = 7;
 		let cipher = CaesarCipher::new(alphabet, offset);
 		let encoded = cipher.encode("CZEŚĆ");
@@ -163,8 +163,7 @@ mod tests {
 
 	#[test]
 	fn test_caesar_cipher_with_mixed_case_letters() {
-		let cipher: CaesarCipher<CasedAlphabet> =
-			CaesarCipher::new(UncasedAlphabet::default().try_into().unwrap(), 3);
+		let cipher = CaesarCipher::new(StaticAlphabet::default_cased(), 3);
 		let encoded = cipher.encode("tHe quIcK BrOwN fOx jUmPeD OvEr ThE LaZy DoG.");
 		assert_eq!(encoded, "wKh txLfN EuRzQ iRa mXpShG RyHu WkH OdCb GrJ.");
 		let decoded = cipher.decode(&encoded);
