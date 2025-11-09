@@ -6,3 +6,7 @@ pub mod cipher {
 }
 
 pub mod alphabet;
+
+pub mod extension {
+	pub mod char;
+}
