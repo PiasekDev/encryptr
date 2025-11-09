@@ -5,8 +5,8 @@ pub mod cipher {
 	pub mod vigenere;
 
 	pub trait Cipher {
-		fn encode(&self, input: &str) -> String;
-		fn decode(&self, input: &str) -> String;
+		fn encode(&self, input: &str) -> String; // rename to encrypt?
+		fn decode(&self, input: &str) -> String; // rename to decrypt?
 	}
 }
 
