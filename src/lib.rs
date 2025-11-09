@@ -1,6 +1,7 @@
 pub mod cipher {
 	pub mod affine;
 	pub mod caesar;
+	pub mod des;
 	pub mod substitution;
 	pub mod vigenere;
 
