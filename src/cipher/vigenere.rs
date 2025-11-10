@@ -1,10 +1,10 @@
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::{Alphabet, StaticAlphabet};
 
-pub struct VigenereCipher {
+pub struct VigenereCipher<A: Alphabet> {
 	key: Vec<usize>,
-	alphabet: Alphabet,
+	alphabet: A,
 }
 
 #[derive(Debug)]
@@ -12,12 +12,14 @@ pub enum VigenereCipherError {
 	KeywordNotInAlphabet,
 }
 
-impl VigenereCipher {
+impl VigenereCipher<StaticAlphabet<char, 26>> {
 	pub fn with_keyword(keyword: &str) -> Result<Self, VigenereCipherError> {
-		Self::new(Alphabet::default(), keyword)
+		Self::new(StaticAlphabet::default(), keyword)
 	}
+}
 
-	pub fn new(alphabet: Alphabet, keyword: &str) -> Result<Self, VigenereCipherError> {
+impl<A: Alphabet<Character = char>> VigenereCipher<A> {
+	pub fn new(alphabet: A, keyword: &str) -> Result<Self, VigenereCipherError> {
 		let key = keyword
 			.chars()
 			.map(|c| alphabet.index_of(c))
@@ -38,9 +40,9 @@ impl VigenereCipher {
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
 				.map(|(position, key_offset)| position.addm(key_offset, &self.alphabet.len()))
 				.and_then(|new_pos| self.alphabet.char_at(new_pos))
-				.unwrap_or(char);
+				.unwrap_or(&char);
 
-			result.push(encoded_char);
+			result.push(*encoded_char);
 		}
 
 		result
@@ -57,9 +59,9 @@ impl VigenereCipher {
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
 				.map(|(position, key_offset)| position.subm(key_offset, &self.alphabet.len()))
 				.and_then(|new_pos| self.alphabet.char_at(new_pos))
-				.unwrap_or(char);
+				.unwrap_or(&char);
 
-			result.push(decoded_char);
+			result.push(*decoded_char);
 		}
 
 		result

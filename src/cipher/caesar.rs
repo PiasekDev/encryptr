@@ -1,21 +1,25 @@
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::{Alphabet, StaticAlphabet};
 
-pub struct CaesarCipher {
-	alphabet: Alphabet,
+pub struct CaesarCipher<A: Alphabet> {
+	alphabet: A,
 	offset: usize,
 }
 
-impl CaesarCipher {
+impl CaesarCipher<StaticAlphabet<char, 26>> {
 	pub fn with_offset(offset: usize) -> Self {
-		CaesarCipher::new(Alphabet::default(), offset)
+		CaesarCipher::new(StaticAlphabet::default(), offset)
 	}
+}
 
-	pub fn new(alphabet: Alphabet, offset: usize) -> Self {
+impl<A: Alphabet> CaesarCipher<A> {
+	pub fn new(alphabet: A, offset: usize) -> Self {
 		CaesarCipher { alphabet, offset }
 	}
+}
 
+impl<A: Alphabet<Character = char>> CaesarCipher<A> {
 	pub fn encode(&self, input: &str) -> String {
 		input
 			.chars()
@@ -28,6 +32,7 @@ impl CaesarCipher {
 			.index_of(*char)
 			.map(|pos| pos.addm(self.offset, &self.alphabet.len()))
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.copied()
 	}
 
 	pub fn decode(&self, input: &str) -> String {
@@ -42,6 +47,7 @@ impl CaesarCipher {
 			.index_of(*char)
 			.map(|pos| pos.subm(self.offset, &self.alphabet.len()))
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.copied()
 	}
 }
 
@@ -69,7 +75,7 @@ mod tests {
 
 	#[test]
 	fn test_caesar_cipher_with_custom_alphabet_and_offset() {
-		let alphabet = Alphabet::polish();
+		let alphabet = StaticAlphabet::polish_uppercase();
 		let offset = 7;
 		let cipher = CaesarCipher::new(alphabet, offset);
 		let encoded = cipher.encode("CZEŚĆ");

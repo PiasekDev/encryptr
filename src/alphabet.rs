@@ -1,56 +1,22 @@
-pub struct Alphabet(Vec<char>);
+mod r#static;
+pub use r#static::*;
 
-impl Default for Alphabet {
-	fn default() -> Self {
-		Self::new("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	}
-}
+mod dynamic;
+pub use dynamic::*;
 
-impl Alphabet {
-	pub fn new(s: &str) -> Self {
-		Alphabet(s.chars().collect())
-	}
+mod cased_char;
+pub use cased_char::*;
 
-	pub fn polish() -> Self {
-		Self::new("AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ")
-	}
+pub trait Alphabet: IntoIterator<Item = Self::Character> {
+	type Character;
 
-	pub fn len(&self) -> usize {
-		self.0.len()
-	}
+	fn len(&self) -> usize;
 
-	pub fn is_empty(&self) -> bool {
-		self.0.is_empty()
-	}
+	fn is_empty(&self) -> bool;
 
-	pub fn iter(&self) -> impl Iterator<Item = &char> {
-		self.into_iter()
-	}
+	fn iter(&self) -> impl Iterator<Item = &Self::Character>;
 
-	pub fn index_of(&self, c: char) -> Option<usize> {
-		self.0.iter().position(|&x| x == c)
-	}
+	fn index_of(&self, char: char) -> Option<usize>;
 
-	pub fn char_at(&self, index: usize) -> Option<char> {
-		self.0.get(index).copied()
-	}
-}
-
-impl IntoIterator for Alphabet {
-	type Item = char;
-	type IntoIter = std::vec::IntoIter<char>;
-
-	fn into_iter(self) -> Self::IntoIter {
-		self.0.into_iter()
-	}
-}
-
-impl<'a> IntoIterator for &'a Alphabet {
-	type Item = &'a char;
-	type IntoIter = std::slice::Iter<'a, char>;
-
-	#[inline]
-	fn into_iter(self) -> Self::IntoIter {
-		self.0.iter()
-	}
+	fn char_at(&self, index: usize) -> Option<&Self::Character>;
 }

@@ -1,11 +1,17 @@
 use num_modular::{ModularCoreOps, ModularUnaryOps};
 
-use crate::alphabet::Alphabet;
+use crate::alphabet::{Alphabet, StaticAlphabet};
 
-pub struct AffineCipher {
+pub struct AffineCipher<A: Alphabet> {
 	a: usize,
 	b: usize,
-	alphabet: Alphabet,
+	alphabet: A,
+}
+
+impl AffineCipher<StaticAlphabet<char, 26>> {
+	pub fn with_params(a: usize, b: usize) -> Result<Self, AffineCipherError> {
+		Self::new(StaticAlphabet::ascii_uppercase(), a, b)
+	}
 }
 
 #[derive(Debug)]
@@ -13,12 +19,8 @@ pub enum AffineCipherError {
 	InvalidAValue,
 }
 
-impl AffineCipher {
-	pub fn with_params(a: usize, b: usize) -> Result<Self, AffineCipherError> {
-		Self::new(Alphabet::default(), a, b)
-	}
-
-	pub fn new(alphabet: Alphabet, a: usize, b: usize) -> Result<Self, AffineCipherError> {
+impl<A: Alphabet<Character = char>> AffineCipher<A> {
+	pub fn new(alphabet: A, a: usize, b: usize) -> Result<Self, AffineCipherError> {
 		if a.invm(&alphabet.len()).is_none() {
 			return Err(AffineCipherError::InvalidAValue);
 		}
@@ -38,6 +40,7 @@ impl AffineCipher {
 			.index_of(*char)
 			.map(|pos| (self.a * pos + self.b) % self.alphabet.len())
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.copied()
 	}
 
 	pub fn decode(&self, input: &str) -> String {
@@ -56,6 +59,7 @@ impl AffineCipher {
 					% self.alphabet.len()
 			})
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.copied()
 	}
 }
 
