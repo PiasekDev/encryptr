@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 bimap = "0.6.3"
+itertools = "0.14.0"
 num-modular = "0.6.1"

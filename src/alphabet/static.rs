@@ -1,3 +1,7 @@
+use std::str::Chars;
+
+use itertools::Itertools;
+
 use crate::{
 	alphabet::{Alphabet, CasedChar},
 	extension::char::CaseConversionError,
@@ -13,13 +17,19 @@ impl Default for StaticAlphabet<char, 26> {
 
 impl StaticAlphabet<char, 26> {
 	pub fn ascii_uppercase() -> Self {
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars().collect()
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			.chars()
+			.try_into()
+			.expect("There should be 26 ASCII uppercase letters")
 	}
 }
 
 impl StaticAlphabet<char, 32> {
 	pub fn polish_uppercase() -> Self {
-		"AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ".chars().collect()
+		"AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ"
+			.chars()
+			.try_into()
+			.expect("There should be 32 Polish uppercase letters")
 	}
 }
 
@@ -55,17 +65,45 @@ impl<T: PartialEq + PartialEq<char>, const N: usize> Alphabet for StaticAlphabet
 	}
 }
 
-impl<const N: usize> FromIterator<char> for StaticAlphabet<char, N> {
-	fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
-		let mut chars = iter.into_iter();
-		Self(core::array::from_fn(|_| chars.next().unwrap()))
+/// A wrapper type to help implement `TryFrom<Chars>` generically (using IntoIterator as a trait bound).
+///
+/// See: https://github.com/rust-lang/rust/issues/50133
+pub struct TryFromInputWrapper<T>(pub T);
+
+#[derive(Debug)]
+pub enum TryFromCharIteratorError {
+	TooFewElements,
+	TooManyElements,
+}
+
+impl<T: IntoIterator<Item = char>, const N: usize> TryFrom<TryFromInputWrapper<T>>
+	for StaticAlphabet<char, N>
+{
+	type Error = TryFromCharIteratorError;
+
+	fn try_from(value: TryFromInputWrapper<T>) -> Result<Self, Self::Error> {
+		let mut chars = value.0.into_iter();
+		let array = core::array::from_fn(|_| chars.next());
+
+		if array.iter().any(|x| x.is_none()) {
+			return Err(TryFromCharIteratorError::TooFewElements);
+		}
+
+		if chars.next().is_some() {
+			return Err(TryFromCharIteratorError::TooManyElements);
+		}
+
+		Ok(Self(
+			array.map(|x| x.expect("There should be exactly N elements")),
+		))
 	}
 }
 
-impl<const N: usize> FromIterator<CasedChar> for StaticAlphabet<CasedChar, N> {
-	fn from_iter<T: IntoIterator<Item = CasedChar>>(iter: T) -> Self {
-		let mut chars = iter.into_iter();
-		Self(core::array::from_fn(|_| chars.next().unwrap()))
+impl<const N: usize> TryFrom<Chars<'_>> for StaticAlphabet<char, N> {
+	type Error = TryFromCharIteratorError;
+
+	fn try_from(value: Chars) -> Result<Self, Self::Error> {
+		TryFromInputWrapper(value).try_into()
 	}
 }
 
@@ -73,7 +111,13 @@ impl<const N: usize> TryFrom<StaticAlphabet<char, N>> for StaticAlphabet<CasedCh
 	type Error = CaseConversionError;
 
 	fn try_from(value: StaticAlphabet<char, N>) -> Result<Self, Self::Error> {
-		value.into_iter().map(CasedChar::try_from).collect()
+		value
+			.into_iter()
+			.map(CasedChar::try_from)
+			.process_results(|mut chars| {
+				core::array::from_fn(|_| chars.next().expect("There should be exactly N elements"))
+			})
+			.map(Self)
 	}
 }
 

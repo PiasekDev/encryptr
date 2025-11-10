@@ -47,7 +47,7 @@ mod tests {
 	#[test]
 	fn test_substitution_cipher() {
 		let alphabet = StaticAlphabet::default();
-		let mapping_alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM".chars().collect();
+		let mapping_alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM".chars().try_into().expect("There should be 26 characters");
 		let cipher = SubstitutionCipher::new(alphabet, mapping_alphabet).unwrap();
 
 		let encoded = cipher.encode("HELLO");
