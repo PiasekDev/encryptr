@@ -7,6 +7,9 @@ pub use dynamic::*;
 mod cased_char;
 pub use cased_char::*;
 
+mod index;
+pub use index::*;
+
 pub trait Alphabet: IntoIterator<Item = Self::Character> {
 	type Character;
 

@@ -3,7 +3,7 @@ use std::str::Chars;
 use itertools::Itertools;
 
 use crate::{
-	alphabet::{Alphabet, CasedChar},
+	alphabet::{Alphabet, CasedChar, ModuloIndex},
 	extension::char::CaseConversionError,
 };
 
@@ -62,6 +62,16 @@ impl<T: PartialEq + PartialEq<char>, const N: usize> Alphabet for StaticAlphabet
 
 	fn char_at(&self, index: usize) -> Option<&Self::Character> {
 		self.0.get(index)
+	}
+}
+
+impl<T: PartialEq + PartialEq<char>, const N: usize> StaticAlphabet<T, N> {
+	pub fn index_of(&self, char: char) -> Option<ModuloIndex<N>> {
+		Alphabet::index_of(self, char).map(ModuloIndex::new)
+	}
+
+	pub fn char_at(&self, index: ModuloIndex<N>) -> &<Self as Alphabet>::Character {
+		Alphabet::char_at(self, index.inner()).expect("The index value should be in array bounds")
 	}
 }
 
