@@ -1,72 +1,46 @@
-use disjoint_impls::disjoint_impls;
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::{Alphabet, CasedChar, StaticAlphabet};
+use crate::alphabet::{Alphabet, CasedChar};
+use crate::cipher::Cipher;
 use crate::extension::char::CharExt;
 
-pub struct CaesarCipher<A: Alphabet> {
-	alphabet: A,
+pub struct CaesarCipher<C> {
+	alphabet: Alphabet<C>,
 	offset: usize,
 }
 
-impl CaesarCipher<StaticAlphabet<char, 26>> {
+impl CaesarCipher<char> {
 	pub fn with_offset(offset: usize) -> Self {
-		CaesarCipher::new(StaticAlphabet::default(), offset)
+		CaesarCipher::new(Alphabet::ascii_uppercase(), offset)
 	}
 }
 
-impl<A: Alphabet> CaesarCipher<A> {
-	pub fn new(alphabet: A, offset: usize) -> Self {
+impl<C> CaesarCipher<C> {
+	pub fn new(alphabet: Alphabet<C>, offset: usize) -> Self {
 		CaesarCipher { alphabet, offset }
 	}
 }
 
-disjoint_impls! {
-	pub trait Cipher {
-		fn encipher(&self, input: &str) -> String;
-		fn decipher(&self, input: &str) -> String;
+impl Cipher for CaesarCipher<char> {
+	fn encipher(&self, input: &str) -> String {
+		input
+			.chars()
+			.map(|c| uncased::encode_char(self, &c).unwrap_or(c))
+			.collect()
 	}
 
-	impl<A: Alphabet<Character = char>> Cipher for CaesarCipher<A> {
-		fn encipher(&self, input: &str) -> String {
-			input
-				.chars()
-				.map(|c| uncased::encode_char(self, &c).unwrap_or(c))
-				.collect()
-		}
-
-		fn decipher(&self, input: &str) -> String {
-			input
-				.chars()
-				.map(|c| uncased::decode_char(self, &c).unwrap_or(c))
-				.collect()
-		}
-	}
-
-	impl<A: Alphabet<Character = CasedChar>> Cipher for CaesarCipher<A> {
-		fn encipher(&self, input: &str) -> String {
-			input
-				.chars()
-				.map(|c| cased::encode_char(self, &c).unwrap_or(c))
-				.collect()
-		}
-
-		fn decipher(&self, input: &str) -> String {
-			input
-				.chars()
-				.map(|c| cased::decode_char(self, &c).unwrap_or(c))
-				.collect()
-		}
+	fn decipher(&self, input: &str) -> String {
+		input
+			.chars()
+			.map(|c| uncased::decode_char(self, &c).unwrap_or(c))
+			.collect()
 	}
 }
 
 mod uncased {
 	use super::*;
 
-	pub(super) fn encode_char(
-		this: &CaesarCipher<impl Alphabet<Character = char>>,
-		char: &char,
-	) -> Option<char> {
+	pub(super) fn encode_char(this: &CaesarCipher<char>, char: &char) -> Option<char> {
 		this.alphabet
 			.position_of(*char)
 			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
@@ -74,10 +48,7 @@ mod uncased {
 			.copied()
 	}
 
-	pub(super) fn decode_char(
-		this: &CaesarCipher<impl Alphabet<Character = char>>,
-		char: &char,
-	) -> Option<char> {
+	pub(super) fn decode_char(this: &CaesarCipher<char>, char: &char) -> Option<char> {
 		this.alphabet
 			.position_of(*char)
 			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
@@ -86,13 +57,26 @@ mod uncased {
 	}
 }
 
+impl Cipher for CaesarCipher<CasedChar> {
+	fn encipher(&self, input: &str) -> String {
+		input
+			.chars()
+			.map(|c| cased::encode_char(self, &c).unwrap_or(c))
+			.collect()
+	}
+
+	fn decipher(&self, input: &str) -> String {
+		input
+			.chars()
+			.map(|c| cased::decode_char(self, &c).unwrap_or(c))
+			.collect()
+	}
+}
+
 mod cased {
 	use super::*;
 
-	pub(super) fn encode_char(
-		this: &CaesarCipher<impl Alphabet<Character = CasedChar>>,
-		char: &char,
-	) -> Option<char> {
+	pub(super) fn encode_char(this: &CaesarCipher<CasedChar>, char: &char) -> Option<char> {
 		this.alphabet
 			.position_of(*char)
 			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
@@ -100,10 +84,7 @@ mod cased {
 			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
 	}
 
-	pub(super) fn decode_char(
-		this: &CaesarCipher<impl Alphabet<Character = CasedChar>>,
-		char: &char,
-	) -> Option<char> {
+	pub(super) fn decode_char(this: &CaesarCipher<CasedChar>, char: &char) -> Option<char> {
 		this.alphabet
 			.position_of(*char)
 			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
@@ -136,7 +117,7 @@ mod tests {
 
 	#[test]
 	fn test_caesar_cipher_with_custom_alphabet_and_offset() {
-		let alphabet = StaticAlphabet::polish_uppercase();
+		let alphabet = Alphabet::polish_uppercase();
 		let offset = 7;
 		let cipher = CaesarCipher::new(alphabet, offset);
 		let encoded = cipher.encipher("CZEŚĆ");
@@ -147,7 +128,7 @@ mod tests {
 
 	#[test]
 	fn test_caesar_cipher_with_mixed_case_letters() {
-		let alphabet = StaticAlphabet::ascii_cased();
+		let alphabet = Alphabet::ascii_cased();
 		let offset = 3;
 		let cipher = CaesarCipher::new(alphabet, offset);
 		let enciphered = cipher.encipher("tHe quIcK BrOwN fOx jUmPeD OvEr ThE LaZy DoG.");

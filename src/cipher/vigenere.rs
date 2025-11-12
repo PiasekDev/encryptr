@@ -1,10 +1,10 @@
 use num_modular::ModularCoreOps;
 
-use crate::alphabet::{Alphabet, StaticAlphabet};
+use crate::alphabet::Alphabet;
 
-pub struct VigenereCipher<A: Alphabet> {
+pub struct VigenereCipher {
 	key: Vec<usize>,
-	alphabet: A,
+	alphabet: Alphabet<char>,
 }
 
 #[derive(Debug)]
@@ -12,14 +12,14 @@ pub enum VigenereCipherError {
 	KeywordNotInAlphabet,
 }
 
-impl VigenereCipher<StaticAlphabet<char, 26>> {
+impl VigenereCipher {
 	pub fn with_keyword(keyword: &str) -> Result<Self, VigenereCipherError> {
-		Self::new(StaticAlphabet::default(), keyword)
+		Self::new(Alphabet::default(), keyword)
 	}
 }
 
-impl<A: Alphabet<Character = char>> VigenereCipher<A> {
-	pub fn new(alphabet: A, keyword: &str) -> Result<Self, VigenereCipherError> {
+impl VigenereCipher {
+	pub fn new(alphabet: Alphabet<char>, keyword: &str) -> Result<Self, VigenereCipherError> {
 		let key = keyword
 			.chars()
 			.map(|c| alphabet.position_of(c))

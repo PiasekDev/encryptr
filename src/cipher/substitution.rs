@@ -12,9 +12,9 @@ pub enum SubstitutionCipherError {
 }
 
 impl SubstitutionCipher {
-	pub fn new<A: Alphabet<Character = char>>(
-		alphabet: A,
-		mapping_alphabet: A,
+	pub fn new(
+		alphabet: Alphabet<char>,
+		mapping_alphabet: Alphabet<char>,
 	) -> Result<Self, SubstitutionCipherError> {
 		if alphabet.len() != mapping_alphabet.len() {
 			return Err(SubstitutionCipherError::InvalidMappingLength);
@@ -42,12 +42,11 @@ impl SubstitutionCipher {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::alphabet::StaticAlphabet;
 
 	#[test]
 	fn test_substitution_cipher() {
-		let alphabet = StaticAlphabet::default();
-		let mapping_alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM".chars().try_into().expect("There should be 26 characters");
+		let alphabet = Alphabet::default();
+		let mapping_alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM".chars().collect();
 		let cipher = SubstitutionCipher::new(alphabet, mapping_alphabet).unwrap();
 
 		let encoded = cipher.encode("HELLO");
