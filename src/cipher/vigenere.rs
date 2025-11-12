@@ -22,7 +22,7 @@ impl<A: Alphabet<Character = char>> VigenereCipher<A> {
 	pub fn new(alphabet: A, keyword: &str) -> Result<Self, VigenereCipherError> {
 		let key = keyword
 			.chars()
-			.map(|c| alphabet.index_of(c))
+			.map(|c| alphabet.position_of(c))
 			.collect::<Option<Vec<_>>>()
 			.ok_or(VigenereCipherError::KeywordNotInAlphabet)?;
 
@@ -36,7 +36,7 @@ impl<A: Alphabet<Character = char>> VigenereCipher<A> {
 		for char in input.chars() {
 			let encoded_char = self
 				.alphabet
-				.index_of(char)
+				.position_of(char)
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
 				.map(|(position, key_offset)| position.addm(key_offset, &self.alphabet.len()))
 				.and_then(|new_pos| self.alphabet.char_at(new_pos))
@@ -55,7 +55,7 @@ impl<A: Alphabet<Character = char>> VigenereCipher<A> {
 		for char in input.chars() {
 			let decoded_char = self
 				.alphabet
-				.index_of(char)
+				.position_of(char)
 				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
 				.map(|(position, key_offset)| position.subm(key_offset, &self.alphabet.len()))
 				.and_then(|new_pos| self.alphabet.char_at(new_pos))

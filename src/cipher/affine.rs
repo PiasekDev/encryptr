@@ -37,7 +37,7 @@ impl<A: Alphabet<Character = char>> AffineCipher<A> {
 
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.position_of(*char)
 			.map(|pos| (self.a * pos + self.b) % self.alphabet.len())
 			.and_then(|new_pos| self.alphabet.char_at(new_pos))
 			.copied()
@@ -52,7 +52,7 @@ impl<A: Alphabet<Character = char>> AffineCipher<A> {
 
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.position_of(*char)
 			.map(|pos| {
 				(self.a.invm(&self.alphabet.len()).unwrap()
 					* pos.subm(self.b, &self.alphabet.len()))

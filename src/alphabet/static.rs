@@ -56,7 +56,7 @@ impl<T: PartialEq + PartialEq<char>, const N: usize> Alphabet for StaticAlphabet
 		self.0.iter()
 	}
 
-	fn index_of(&self, char: char) -> Option<usize> {
+	fn position_of(&self, char: char) -> Option<usize> {
 		self.0.iter().position(|x| *x == char)
 	}
 
@@ -67,7 +67,7 @@ impl<T: PartialEq + PartialEq<char>, const N: usize> Alphabet for StaticAlphabet
 
 impl<T: PartialEq + PartialEq<char>, const N: usize> StaticAlphabet<T, N> {
 	pub fn index_of(&self, char: char) -> Option<ModuloIndex<N>> {
-		Alphabet::index_of(self, char).map(ModuloIndex::new)
+		Alphabet::position_of(self, char).map(ModuloIndex::new)
 	}
 
 	pub fn char_at(&self, index: ModuloIndex<N>) -> &<Self as Alphabet>::Character {

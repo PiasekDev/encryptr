@@ -19,7 +19,7 @@ pub trait Alphabet: IntoIterator<Item = Self::Character> {
 
 	fn iter(&self) -> impl Iterator<Item = &Self::Character>;
 
-	fn index_of(&self, char: char) -> Option<usize>;
+	fn position_of(&self, char: char) -> Option<usize>;
 
 	fn char_at(&self, index: usize) -> Option<&Self::Character>;
 }

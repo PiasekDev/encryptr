@@ -17,7 +17,7 @@ impl<T: PartialEq<char>> Alphabet for DynamicAlphabet<T> {
 		self.0.iter()
 	}
 
-	fn index_of(&self, char: char) -> Option<usize> {
+	fn position_of(&self, char: char) -> Option<usize> {
 		self.0.iter().position(|x| *x == char)
 	}
 

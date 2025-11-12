@@ -68,7 +68,7 @@ mod uncased {
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
-			.index_of(*char)
+			.position_of(*char)
 			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| this.alphabet.char_at(new_pos))
 			.copied()
@@ -79,7 +79,7 @@ mod uncased {
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
-			.index_of(*char)
+			.position_of(*char)
 			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| this.alphabet.char_at(new_pos))
 			.copied()
@@ -94,7 +94,7 @@ mod cased {
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
-			.index_of(*char)
+			.position_of(*char)
 			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| this.alphabet.char_at(new_pos))
 			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
@@ -105,7 +105,7 @@ mod cased {
 		char: &char,
 	) -> Option<char> {
 		this.alphabet
-			.index_of(*char)
+			.position_of(*char)
 			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
 			.and_then(|new_pos| this.alphabet.char_at(new_pos))
 			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
