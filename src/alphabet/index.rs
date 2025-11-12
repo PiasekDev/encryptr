@@ -1,68 +1,89 @@
 use std::ops::{Add, Mul, Sub};
 
-use num_modular::VanillaInt;
+use num_modular::{ModularInteger, VanillaInt};
 
-pub struct ModuloIndex<const N: usize>(VanillaInt<usize>);
+use crate::alphabet::Alphabet;
 
-impl<const N: usize> ModuloIndex<N> {
-	/// Creates a new ModuloIndex from a usize value.
-	///
-	/// The value is reduced modulo N.
-	pub fn new(n: usize) -> Self {
-		Self(VanillaInt::new(n, &N))
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct AlphabetIndex<'a, T> {
+	pub(super) alphabet: &'a Alphabet<T>,
+	pub(super) value: VanillaInt<usize>,
+}
+
+impl<'a, T> AlphabetIndex<'a, T> {
+	pub fn get(&self) -> &'a T {
+		&self.alphabet.0[self.value()]
 	}
 
-	pub fn inner(&self) -> usize {
-		*self.0.repr()
+	pub fn value(&self) -> usize {
+		*self.value.repr()
 	}
 }
 
 // NOTE: Deref does not auto implement the traits, therefore these impls are necessary
 
-impl<const N: usize> Mul<usize> for ModuloIndex<N> {
-	type Output = ModuloIndex<N>;
+impl<'a, T> Mul<usize> for AlphabetIndex<'a, T> {
+	type Output = AlphabetIndex<'a, T>;
 
 	fn mul(self, rhs: usize) -> Self::Output {
-		ModuloIndex(self.0 * rhs)
+		AlphabetIndex {
+			alphabet: self.alphabet,
+			value: self.value * rhs,
+		}
 	}
 }
 
-impl<const N: usize> Mul<ModuloIndex<N>> for usize {
-	type Output = ModuloIndex<N>;
+impl<'a, T> Mul<AlphabetIndex<'a, T>> for usize {
+	type Output = AlphabetIndex<'a, T>;
 
-	fn mul(self, rhs: ModuloIndex<N>) -> Self::Output {
-		ModuloIndex(rhs.0 * self)
+	fn mul(self, rhs: AlphabetIndex<'a, T>) -> Self::Output {
+		AlphabetIndex {
+			alphabet: rhs.alphabet,
+			value: rhs.value * self,
+		}
 	}
 }
 
-impl<const N: usize> Add<usize> for ModuloIndex<N> {
-	type Output = ModuloIndex<N>;
+impl<'a, T> Add<usize> for AlphabetIndex<'a, T> {
+	type Output = AlphabetIndex<'a, T>;
 
 	fn add(self, rhs: usize) -> Self::Output {
-		ModuloIndex(self.0 + rhs)
+		AlphabetIndex {
+			alphabet: self.alphabet,
+			value: self.value + rhs,
+		}
 	}
 }
 
-impl<const N: usize> Add<ModuloIndex<N>> for usize {
-	type Output = ModuloIndex<N>;
+impl<'a, T> Add<AlphabetIndex<'a, T>> for usize {
+	type Output = AlphabetIndex<'a, T>;
 
-	fn add(self, rhs: ModuloIndex<N>) -> Self::Output {
-		ModuloIndex(rhs.0 + self)
+	fn add(self, rhs: AlphabetIndex<'a, T>) -> Self::Output {
+		AlphabetIndex {
+			alphabet: rhs.alphabet,
+			value: rhs.value + self,
+		}
 	}
 }
 
-impl<const N: usize> Sub<usize> for ModuloIndex<N> {
-	type Output = ModuloIndex<N>;
+impl<'a, T> Sub<usize> for AlphabetIndex<'a, T> {
+	type Output = AlphabetIndex<'a, T>;
 
 	fn sub(self, rhs: usize) -> Self::Output {
-		ModuloIndex(self.0 - rhs)
+		AlphabetIndex {
+			alphabet: self.alphabet,
+			value: self.value - rhs,
+		}
 	}
 }
 
-impl<const N: usize> Sub<ModuloIndex<N>> for usize {
-	type Output = ModuloIndex<N>;
+impl<'a, T> Sub<AlphabetIndex<'a, T>> for usize {
+	type Output = AlphabetIndex<'a, T>;
 
-	fn sub(self, rhs: ModuloIndex<N>) -> Self::Output {
-		ModuloIndex(VanillaInt::new(self, &N) - rhs.0)
+	fn sub(self, rhs: AlphabetIndex<'a, T>) -> Self::Output {
+		AlphabetIndex {
+			alphabet: rhs.alphabet,
+			value: VanillaInt::new(self, &rhs.value.modulus()) - rhs.value,
+		}
 	}
 }
