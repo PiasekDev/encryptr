@@ -15,4 +15,5 @@ pub mod alphabet;
 
 pub mod extension {
 	pub mod char;
+	pub mod u8;
 }
