@@ -56,8 +56,12 @@ impl PermuteExt for [usize] {
 		let mut output = vec![0u8; self.len().div_ceil(8)];
 
 		for (i, &pos) in self.iter().enumerate() {
-			let bit = (input[(pos - 1) / 8] >> (7 - ((pos - 1) % 8))) & 1;
-			output[i / 8] |= bit << (7 - (i % 8));
+			let b_in = (pos - 1) / 8;
+			let k_in = 7 - ((pos - 1) % 8);
+			let bit = (input[b_in] >> k_in) & 1;
+			let b_out = i / 8;
+			let k_out = 7 - (i % 8);
+			output[b_out] |= bit << k_out;
 		}
 
 		output
