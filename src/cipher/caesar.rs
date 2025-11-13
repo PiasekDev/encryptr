@@ -1,5 +1,3 @@
-use num_modular::ModularCoreOps;
-
 use crate::alphabet::{Alphabet, CasedChar};
 use crate::cipher::Cipher;
 use crate::extension::char::CharExt;
@@ -25,34 +23,32 @@ impl Cipher for CaesarCipher<char> {
 	fn encipher(&self, input: &str) -> String {
 		input
 			.chars()
-			.map(|c| uncased::encode_char(self, &c).unwrap_or(c))
+			.map(|c| self.encode_char(&c).unwrap_or(c))
 			.collect()
 	}
 
 	fn decipher(&self, input: &str) -> String {
 		input
 			.chars()
-			.map(|c| uncased::decode_char(self, &c).unwrap_or(c))
+			.map(|c| self.decode_char(&c).unwrap_or(c))
 			.collect()
 	}
 }
 
-mod uncased {
-	use super::*;
-
-	pub(super) fn encode_char(this: &CaesarCipher<char>, char: &char) -> Option<char> {
-		this.alphabet
-			.position_of(*char)
-			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
-			.and_then(|new_pos| this.alphabet.char_at(new_pos))
+impl CaesarCipher<char> {
+	fn encode_char(&self, char: &char) -> Option<char> {
+		self.alphabet
+			.index_of(*char)
+			.map(|index| index + self.offset)
+			.map(|new_index| new_index.get())
 			.copied()
 	}
 
-	pub(super) fn decode_char(this: &CaesarCipher<char>, char: &char) -> Option<char> {
-		this.alphabet
-			.position_of(*char)
-			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
-			.and_then(|new_pos| this.alphabet.char_at(new_pos))
+	fn decode_char(&self, char: &char) -> Option<char> {
+		self.alphabet
+			.index_of(*char)
+			.map(|index| index - self.offset)
+			.map(|new_index| new_index.get())
 			.copied()
 	}
 }
@@ -61,34 +57,32 @@ impl Cipher for CaesarCipher<CasedChar> {
 	fn encipher(&self, input: &str) -> String {
 		input
 			.chars()
-			.map(|c| cased::encode_char(self, &c).unwrap_or(c))
+			.map(|c| self.encode_char(&c).unwrap_or(c))
 			.collect()
 	}
 
 	fn decipher(&self, input: &str) -> String {
 		input
 			.chars()
-			.map(|c| cased::decode_char(self, &c).unwrap_or(c))
+			.map(|c| self.decode_char(&c).unwrap_or(c))
 			.collect()
 	}
 }
 
-mod cased {
-	use super::*;
-
-	pub(super) fn encode_char(this: &CaesarCipher<CasedChar>, char: &char) -> Option<char> {
-		this.alphabet
-			.position_of(*char)
-			.map(|pos| pos.addm(this.offset, &this.alphabet.len()))
-			.and_then(|new_pos| this.alphabet.char_at(new_pos))
+impl CaesarCipher<CasedChar> {
+	fn encode_char(&self, char: &char) -> Option<char> {
+		self.alphabet
+			.index_of(*char)
+			.map(|index| index + self.offset)
+			.map(|new_index| new_index.get())
 			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
 	}
 
-	pub(super) fn decode_char(this: &CaesarCipher<CasedChar>, char: &char) -> Option<char> {
-		this.alphabet
-			.position_of(*char)
-			.map(|pos| pos.subm(this.offset, &this.alphabet.len()))
-			.and_then(|new_pos| this.alphabet.char_at(new_pos))
+	fn decode_char(&self, char: &char) -> Option<char> {
+		self.alphabet
+			.index_of(*char)
+			.map(|index| index - self.offset)
+			.map(|new_index| new_index.get())
 			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
 	}
 }

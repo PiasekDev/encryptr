@@ -1,4 +1,4 @@
-use num_modular::{ModularCoreOps, ModularUnaryOps};
+use num_modular::ModularUnaryOps;
 
 use crate::alphabet::Alphabet;
 
@@ -37,9 +37,9 @@ impl AffineCipher {
 
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.position_of(*char)
-			.map(|pos| (self.a * pos + self.b) % self.alphabet.len())
-			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.index_of(*char)
+			.map(|index| self.a * index + self.b)
+			.map(|new_index| new_index.get())
 			.copied()
 	}
 
@@ -52,13 +52,10 @@ impl AffineCipher {
 
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.position_of(*char)
-			.map(|pos| {
-				(self.a.invm(&self.alphabet.len()).unwrap()
-					* pos.subm(self.b, &self.alphabet.len()))
-					% self.alphabet.len()
-			})
-			.and_then(|new_pos| self.alphabet.char_at(new_pos))
+			.index_of(*char)
+			.zip(self.a.invm(&self.alphabet.len()))
+			.map(|(index, inverse)| inverse * (index - self.b))
+			.map(|new_index| new_index.get())
 			.copied()
 	}
 }

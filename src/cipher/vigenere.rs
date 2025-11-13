@@ -1,5 +1,3 @@
-use num_modular::ModularCoreOps;
-
 use crate::alphabet::Alphabet;
 
 pub struct VigenereCipher {
@@ -30,41 +28,37 @@ impl VigenereCipher {
 	}
 
 	pub fn encode(&self, input: &str) -> String {
-		let mut key_iter = self.key.iter().cycle();
-		let mut result = String::with_capacity(input.len());
+		let mut key_iter = self.key.iter().cycle().copied();
+		input
+			.chars()
+			.map(|char| self.encode_char(&mut key_iter, char).unwrap_or(char))
+			.collect()
+	}
 
-		for char in input.chars() {
-			let encoded_char = self
-				.alphabet
-				.position_of(char)
-				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
-				.map(|(position, key_offset)| position.addm(key_offset, &self.alphabet.len()))
-				.and_then(|new_pos| self.alphabet.char_at(new_pos))
-				.unwrap_or(&char);
-
-			result.push(*encoded_char);
-		}
-
-		result
+	fn encode_char(&self, key_iter: &mut impl Iterator<Item = usize>, char: char) -> Option<char> {
+		self.alphabet
+			.index_of(char)
+			.and_then(|index| key_iter.next().map(|offset| (index, offset)))
+			.map(|(index, key_offset)| index + key_offset)
+			.map(|new_index| new_index.get())
+			.copied()
 	}
 
 	pub fn decode(&self, input: &str) -> String {
-		let mut key_iter = self.key.iter().cycle();
-		let mut result = String::with_capacity(input.len());
+		let mut key_iter = self.key.iter().cycle().copied();
+		input
+			.chars()
+			.map(|char| self.decode_char(&mut key_iter, char).unwrap_or(char))
+			.collect()
+	}
 
-		for char in input.chars() {
-			let decoded_char = self
-				.alphabet
-				.position_of(char)
-				.and_then(|pos| key_iter.next().map(|offset| (pos, offset)))
-				.map(|(position, key_offset)| position.subm(key_offset, &self.alphabet.len()))
-				.and_then(|new_pos| self.alphabet.char_at(new_pos))
-				.unwrap_or(&char);
-
-			result.push(*decoded_char);
-		}
-
-		result
+	fn decode_char(&self, key_iter: &mut impl Iterator<Item = usize>, char: char) -> Option<char> {
+		self.alphabet
+			.index_of(char)
+			.and_then(|index| key_iter.next().map(|offset| (index, offset)))
+			.map(|(index, key_offset)| index - key_offset)
+			.map(|new_index| new_index.get())
+			.copied()
 	}
 }
 
