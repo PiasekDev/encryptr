@@ -1,4 +1,4 @@
-use crate::alphabet::{Alphabet, AlphabetIndex, CasedChar};
+use crate::alphabet::{Alphabet, AlphabetIndex, AlphabetIndexable, CasedChar};
 use crate::cipher::Cipher;
 use crate::extension::char::CharExt;
 

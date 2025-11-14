@@ -1,4 +1,4 @@
-use crate::alphabet::{Alphabet, AlphabetIndex};
+use crate::alphabet::{Alphabet, AlphabetIndex, AlphabetIndexable};
 
 pub struct VigenereCipher {
 	key: Vec<usize>,

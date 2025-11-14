@@ -1,6 +1,6 @@
 use num_modular::ModularUnaryOps;
 
-use crate::alphabet::{Alphabet, AlphabetIndex};
+use crate::alphabet::{Alphabet, AlphabetIndex, AlphabetIndexable};
 
 pub struct AffineCipher {
 	a: usize,
