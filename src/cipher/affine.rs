@@ -37,7 +37,7 @@ impl AffineCipher {
 
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.index_of(char)
 			.map(|index| self.a * index + self.b)
 			.map(|new_index| new_index.get())
 			.copied()
@@ -52,7 +52,7 @@ impl AffineCipher {
 
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.index_of(char)
 			.zip(self.a.invm(&self.alphabet.len()))
 			.map(|(index, inverse)| inverse * (index - self.b))
 			.map(|new_index| new_index.get())

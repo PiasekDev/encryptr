@@ -38,7 +38,7 @@ impl Cipher for CaesarCipher<char> {
 impl CaesarCipher<char> {
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.index_of(char)
 			.map(|index| index + self.offset)
 			.map(|new_index| new_index.get())
 			.copied()
@@ -46,7 +46,7 @@ impl CaesarCipher<char> {
 
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.index_of(char)
 			.map(|index| index - self.offset)
 			.map(|new_index| new_index.get())
 			.copied()
@@ -72,7 +72,7 @@ impl Cipher for CaesarCipher<CasedChar> {
 impl CaesarCipher<CasedChar> {
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.index_of(char)
 			.map(|index| index + self.offset)
 			.map(|new_index| new_index.get())
 			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
@@ -80,7 +80,7 @@ impl CaesarCipher<CasedChar> {
 
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
-			.index_of(*char)
+			.index_of(char)
 			.map(|index| index - self.offset)
 			.map(|new_index| new_index.get())
 			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))

@@ -20,7 +20,7 @@ impl VigenereCipher {
 	pub fn new(alphabet: Alphabet<char>, keyword: &str) -> Result<Self, VigenereCipherError> {
 		let key = keyword
 			.chars()
-			.map(|c| alphabet.position_of(c))
+			.map(|c| alphabet.position_of(&c))
 			.collect::<Option<Vec<_>>>()
 			.ok_or(VigenereCipherError::KeywordNotInAlphabet)?;
 
@@ -31,11 +31,11 @@ impl VigenereCipher {
 		let mut key_iter = self.key.iter().cycle().copied();
 		input
 			.chars()
-			.map(|char| self.encode_char(&mut key_iter, char).unwrap_or(char))
+			.map(|char| self.encode_char(&mut key_iter, &char).unwrap_or(char))
 			.collect()
 	}
 
-	fn encode_char(&self, key_iter: &mut impl Iterator<Item = usize>, char: char) -> Option<char> {
+	fn encode_char(&self, key_iter: &mut impl Iterator<Item = usize>, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(char)
 			.and_then(|index| key_iter.next().map(|offset| (index, offset)))
@@ -48,11 +48,11 @@ impl VigenereCipher {
 		let mut key_iter = self.key.iter().cycle().copied();
 		input
 			.chars()
-			.map(|char| self.decode_char(&mut key_iter, char).unwrap_or(char))
+			.map(|char| self.decode_char(&mut key_iter, &char).unwrap_or(char))
 			.collect()
 	}
 
-	fn decode_char(&self, key_iter: &mut impl Iterator<Item = usize>, char: char) -> Option<char> {
+	fn decode_char(&self, key_iter: &mut impl Iterator<Item = usize>, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(char)
 			.and_then(|index| key_iter.next().map(|offset| (index, offset)))

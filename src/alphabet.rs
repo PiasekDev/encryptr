@@ -1,11 +1,11 @@
 use crate::extension::char::CaseConversionError;
+use num_modular::VanillaInt;
 
 mod cased_char;
 pub use cased_char::*;
 
 mod index;
 pub use index::*;
-use num_modular::VanillaInt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Alphabet<T>(Vec<T>);
@@ -47,15 +47,15 @@ impl<T: PartialEq<char>> Alphabet<T> {
 		self.0.iter()
 	}
 
-	pub fn position_of(&self, char: char) -> Option<usize> {
-		self.0.iter().position(|x| *x == char)
+	pub fn position_of(&self, char: &char) -> Option<usize> {
+		self.0.iter().position(|x| x == char)
 	}
 
 	pub fn char_at(&self, index: usize) -> Option<&T> {
 		self.0.get(index)
 	}
 
-	pub fn index_of(&self, char: char) -> Option<AlphabetIndex<'_, T>> {
+	pub fn index_of(&self, char: &char) -> Option<AlphabetIndex<'_, T>> {
 		self.position_of(char).map(|pos| AlphabetIndex {
 			alphabet: self,
 			value: VanillaInt::new(pos, &self.len()),
