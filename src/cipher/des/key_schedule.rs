@@ -15,13 +15,21 @@ impl KeySchedule {
 			.try_into()
 			.expect("The permutation should produce 56 bits");
 
+		println!("Permuted key: {:056b}", u64::from_be_bytes([0, permuted[0], permuted[1], permuted[2], permuted[3], permuted[4], permuted[5], permuted[6]]));
+
 		let mut c = C::from(&permuted);
 		let mut d = D::from(&permuted);
+
+		println!("C0: {:028b}", c.0);
+		println!("D0: {:028b}", d.0);
 
 		let mut subkeys = [[0u8; 6]; 16];
 		for (i, subkey) in subkeys.iter_mut().enumerate() {
 			c.shift_left(constants::SHIFTS[i]);
 			d.shift_left(constants::SHIFTS[i]);
+
+			println!("C{}: {:028b}", i + 1, c.0);
+			println!("D{}: {:028b}", i + 1, d.0);
 
 			let cd = combine(&c, &d);
 			let permuted_subkey: [u8; 6] = constants::PC_2
@@ -55,7 +63,7 @@ impl From<&[u8; 7]> for C {
 			.try_into()
 			.expect("Slice with incorrect length");
 
-		C(u32::from_ne_bytes(bytes))
+		C(u32::from_be_bytes(bytes))
 	}
 }
 
@@ -80,7 +88,7 @@ impl From<&[u8; 7]> for D {
 			.try_into()
 			.expect("Slice with incorrect length");
 
-		D(u32::from_ne_bytes(bytes))
+		D(u32::from_be_bytes(bytes))
 	}
 }
 
@@ -96,8 +104,10 @@ impl D {
 
 fn combine(c: &C, d: &D) -> [u8; 7] {
 	let mut cd = [0u8; 7];
-	cd[0..4].copy_from_slice(&c.0.to_ne_bytes());
-	cd[3..7].copy_from_slice(&d.0.to_ne_bytes());
+	cd[0..3].copy_from_slice(&c.0.to_be_bytes()[..3]);
+	cd[3] |= (c.0.get_bits(4, 4) as u8) << 4;
+	cd[3] |= d.0.get_bits(4, 3 * 8) as u8;
+	cd[4..7].copy_from_slice(&d.0.to_be_bytes()[1..]);
 	cd
 }
 
@@ -114,4 +124,81 @@ mod constants {
 	];
 
 	pub const SHIFTS: [u8; 16] = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1];
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_key_schedule() {
+		const KEY: [u8; 8] = [
+			0b00010011, 0b00110100, 0b01010111, 0b01111001, 0b10011011, 0b10111100, 0b11011111,
+			0b11110001,
+		];
+		const EXPECTED_SUBKEYS: [[u8; 6]; 16] = [
+			[
+				0b00011011, 0b00000010, 0b11101111, 0b11111100, 0b01110000, 0b01110010,
+			],
+			[
+				0b01111001, 0b10101110, 0b11011001, 0b11011011, 0b11001001, 0b11100101,
+			],
+			[
+				0b01010101, 0b11111100, 0b10001010, 0b01000010, 0b11001111, 0b10011001,
+			],
+			[
+				0b01110010, 0b10101101, 0b11010110, 0b11011011, 0b00110101, 0b00011101,
+			],
+			[
+				0b01111100, 0b11101100, 0b00000111, 0b11101011, 0b01010011, 0b10101000,
+			],
+			[
+				0b01100011, 0b10100101, 0b00111110, 0b01010000, 0b01111011, 0b00101111,
+			],
+			[
+				0b11101100, 0b10000100, 0b10110111, 0b11110110, 0b00011000, 0b10111100,
+			],
+			[
+				0b11110111, 0b10001010, 0b00111010, 0b11000001, 0b00111011, 0b11111011,
+			],
+			[
+				0b11100000, 0b11011011, 0b11101011, 0b11101101, 0b11100111, 0b10000001,
+			],
+			[
+				0b10110001, 0b11110011, 0b01000111, 0b10111010, 0b01000110, 0b01001111,
+			],
+			[
+				0b00100001, 0b01011111, 0b11010011, 0b11011110, 0b11010011, 0b10000110,
+			],
+			[
+				0b01110101, 0b01110001, 0b11110101, 0b10010100, 0b01100111, 0b11101001,
+			],
+			[
+				0b10010111, 0b11000101, 0b11010001, 0b11111010, 0b10111010, 0b01000001,
+			],
+			[
+				0b01011111, 0b01000011, 0b10110111, 0b11110010, 0b11100111, 0b00111010,
+			],
+			[
+				0b10111111, 0b10010001, 0b10001101, 0b00111101, 0b00111111, 0b00001010,
+			],
+			[
+				0b11001011, 0b00111101, 0b10001011, 0b00001110, 0b00010111, 0b11110101,
+			],
+		];
+		let key_schedule = KeySchedule::new(KEY);
+		for (i, subkey) in key_schedule.subkeys.iter().enumerate() {
+			let fmt = |b: &[u8; 6]| {
+				b.iter()
+					.map(|byte| format!("{:08b}", byte))
+					.collect::<Vec<String>>()
+					.join(" ")
+			};
+			println!("Expected: {}", fmt(&EXPECTED_SUBKEYS[i]));
+			println!("Got     : {}", fmt(subkey));
+			println!("Subkey {}: ", i + 1);
+			assert_eq!(*subkey, EXPECTED_SUBKEYS[i]);
+			println!("OK");
+		}
+	}
 }
