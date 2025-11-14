@@ -16,16 +16,20 @@ impl DESCipher {
 	pub fn encode(&self, input: &[u8]) -> Vec<u8> {
 		for chunk in &input.iter().copied().chunks(8) {
 			let block: [u8; 8] = array_init::from_iter(chunk).unwrap();
-			let permuted = constants::IP.permute(&block);
-			let (left, right) = permuted.split_at(4);
+			encipher_block(block);
 		}
-		vec![]
+		todo!()
 	}
 
 	pub fn decode(&self, _input: &[u8]) -> Vec<u8> {
 		// Placeholder for DES decoding logic
-		vec![]
+		todo!()
 	}
+}
+
+fn encipher_block(block: [u8; 8]) {
+	let permuted = constants::IP.permute(&block);
+	let (left, right) = permuted.split_at(4);
 }
 
 mod constants {
