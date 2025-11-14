@@ -55,8 +55,8 @@ impl<T: PartialEq<char>> Alphabet<T> {
 		self.0.get(index)
 	}
 
-	pub fn index_of(&self, char: &char) -> Option<AlphabetIndex<'_, T>> {
-		self.position_of(char).map(|pos| AlphabetIndex {
+	pub fn index_of(&self, char: &char) -> Option<UncasedAlphabetIndex<'_, T>> {
+		self.position_of(char).map(|pos| UncasedAlphabetIndex {
 			alphabet: self,
 			value: VanillaInt::new(pos, &self.len()),
 		})
