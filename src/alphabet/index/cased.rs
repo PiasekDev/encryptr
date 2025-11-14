@@ -1,7 +1,7 @@
 use std::ops::{Add, Mul, Sub};
 
 use crate::{
-	alphabet::{AlphabetIndex, CasedChar, UncasedAlphabetIndex},
+	alphabet::{AlphabetIndex, CasedChar, ToChar, UncasedAlphabetIndex},
 	extension::char::CharCase,
 };
 
@@ -18,6 +18,12 @@ impl<'a> AlphabetIndex<'a, CasedChar> for CasedAlphabetIndex<'a> {
 
 	fn value(&self) -> usize {
 		self.index.value()
+	}
+}
+
+impl ToChar for CasedAlphabetIndex<'_> {
+	fn to_char(&self) -> char {
+		self.index.get().at_case(&self.case)
 	}
 }
 

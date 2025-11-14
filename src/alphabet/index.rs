@@ -21,6 +21,10 @@ pub trait AlphabetIndex<'a, T>:
 	fn value(&self) -> usize;
 }
 
+pub trait ToChar {
+	fn to_char(&self) -> char;
+}
+
 #[sealed]
 pub trait UsizeAdd<T> {}
 #[sealed]

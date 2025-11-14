@@ -2,7 +2,7 @@ use std::ops::{Add, Mul, Sub};
 
 use num_modular::{ModularInteger, VanillaInt};
 
-use crate::alphabet::{Alphabet, index::AlphabetIndex};
+use crate::alphabet::{Alphabet, ToChar, index::AlphabetIndex};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct UncasedAlphabetIndex<'a, T> {
@@ -17,6 +17,12 @@ impl<'a, T> AlphabetIndex<'a, T> for UncasedAlphabetIndex<'a, T> {
 
 	fn value(&self) -> usize {
 		*self.value.repr()
+	}
+}
+
+impl ToChar for UncasedAlphabetIndex<'_, char> {
+	fn to_char(&self) -> char {
+		*self.get()
 	}
 }
 
