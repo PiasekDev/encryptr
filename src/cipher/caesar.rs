@@ -1,6 +1,5 @@
-use crate::alphabet::{Alphabet, AlphabetIndex, AlphabetIndexable, CasedChar};
+use crate::alphabet::{Alphabet, AlphabetIndexable, ToChar};
 use crate::cipher::Cipher;
-use crate::extension::char::CharExt;
 
 pub struct CaesarCipher<C> {
 	alphabet: Alphabet<C>,
@@ -19,7 +18,11 @@ impl<C> CaesarCipher<C> {
 	}
 }
 
-impl Cipher for CaesarCipher<char> {
+impl<C> Cipher for CaesarCipher<C>
+where
+	Alphabet<C>: AlphabetIndexable<C>,
+	for<'a> <Alphabet<C> as AlphabetIndexable<C>>::Index<'a>: ToChar,
+{
 	fn encipher(&self, input: &str) -> String {
 		input
 			.chars()
@@ -35,55 +38,23 @@ impl Cipher for CaesarCipher<char> {
 	}
 }
 
-impl CaesarCipher<char> {
+impl<C> CaesarCipher<C>
+where
+	Alphabet<C>: AlphabetIndexable<C>,
+	for<'a> <Alphabet<C> as AlphabetIndexable<C>>::Index<'a>: ToChar,
+{
 	fn encode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(char)
 			.map(|index| index + self.offset)
-			.map(|new_index| new_index.get())
-			.copied()
+			.map(|new_index| new_index.to_char())
 	}
 
 	fn decode_char(&self, char: &char) -> Option<char> {
 		self.alphabet
 			.index_of(char)
 			.map(|index| index - self.offset)
-			.map(|new_index| new_index.get())
-			.copied()
-	}
-}
-
-impl Cipher for CaesarCipher<CasedChar> {
-	fn encipher(&self, input: &str) -> String {
-		input
-			.chars()
-			.map(|c| self.encode_char(&c).unwrap_or(c))
-			.collect()
-	}
-
-	fn decipher(&self, input: &str) -> String {
-		input
-			.chars()
-			.map(|c| self.decode_char(&c).unwrap_or(c))
-			.collect()
-	}
-}
-
-impl CaesarCipher<CasedChar> {
-	fn encode_char(&self, char: &char) -> Option<char> {
-		self.alphabet
-			.index_of(char)
-			.map(|index| index + self.offset)
-			.map(|new_index| new_index.get())
-			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
-	}
-
-	fn decode_char(&self, char: &char) -> Option<char> {
-		self.alphabet
-			.index_of(char)
-			.map(|index| index - self.offset)
-			.map(|new_index| new_index.get())
-			.and_then(|encoded| char.case().map(|case| encoded.at_case(&case)))
+			.map(|new_index| new_index.to_char())
 	}
 }
 
