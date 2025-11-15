@@ -10,12 +10,21 @@ pub struct KeySchedule {
 
 impl KeySchedule {
 	pub fn new(key: [u8; 8]) -> Self {
-		let permuted: [u8; 7] = constants::PC_1
-			.permute(&key)
-			.try_into()
-			.expect("The permutation should produce 56 bits");
+		let permuted: [u8; 7] = constants::PC_1.permute(&key).into_inner();
 
-		println!("Permuted key: {:056b}", u64::from_be_bytes([0, permuted[0], permuted[1], permuted[2], permuted[3], permuted[4], permuted[5], permuted[6]]));
+		println!(
+			"Permuted key: {:056b}",
+			u64::from_be_bytes([
+				0,
+				permuted[0],
+				permuted[1],
+				permuted[2],
+				permuted[3],
+				permuted[4],
+				permuted[5],
+				permuted[6]
+			])
+		);
 
 		let mut c = C::from(&permuted);
 		let mut d = D::from(&permuted);
@@ -32,10 +41,7 @@ impl KeySchedule {
 			println!("D{}: {:028b}", i + 1, d.0);
 
 			let cd = combine(&c, &d);
-			let permuted_subkey: [u8; 6] = constants::PC_2
-				.permute(&cd)
-				.try_into()
-				.expect("The permutation should produce 48 bits");
+			let permuted_subkey: [u8; 6] = constants::PC_2.permute(&cd).into_inner();
 			*subkey = permuted_subkey;
 		}
 

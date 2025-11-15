@@ -28,7 +28,7 @@ impl DESCipher {
 }
 
 fn encipher_block(block: [u8; 8]) {
-	let permuted = constants::IP.permute(&block);
+	let permuted = constants::IP.permute(&block).into_inner();
 	let (left, right) = permuted.split_at(4);
 }
 
