@@ -91,9 +91,9 @@ impl From<&[u8; 7]> for C {
 impl C {
 	fn shift_left(&mut self, shifts: u8) {
 		for _ in 0..shifts {
-			let first_bit = self.0.get_bit(31);
+			let first_bit = self.0.get_bit(31).is_set(0);
 			self.0 <<= 1;
-			self.0 |= first_bit << 4;
+			self.0 = self.0.set_bit_exact(4, first_bit);
 		}
 	}
 }
@@ -116,9 +116,9 @@ impl From<&[u8; 7]> for D {
 impl D {
 	fn shift_left(&mut self, shifts: u8) {
 		for _ in 0..shifts {
-			let first_bit = self.0.get_bit(27);
+			let first_bit = self.0.get_bit(27).is_set(0);
 			self.0 <<= 1;
-			self.0 |= first_bit;
+			self.0 = self.0.set_bit_exact(0, first_bit);
 		}
 	}
 }
