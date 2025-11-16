@@ -6,6 +6,8 @@ use crate::{
 	extension::u8::{BitByBitAdditionMod2, PermuteExt, SelectExt, ToHalvesExt},
 };
 
+pub mod sequence;
+
 mod key_schedule;
 
 pub struct DESCipher {

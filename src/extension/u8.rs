@@ -2,6 +2,8 @@ use std::mem;
 
 use bit_ops::BitOps;
 
+use crate::cipher::des::sequence::ContinuousBitSequence;
+
 pub trait PermuteExt<const N: usize> {
 	fn permute(&self, input: &[u8]) -> [u8; N];
 }
@@ -37,18 +39,19 @@ impl PermuteExt<8> for [u8; 64] {
 }
 
 fn permute<const N: usize>(table: &[u8], input: &[u8]) -> [u8; N] {
-	let mut output = [0u8; N];
+	let input_bits = ContinuousBitSequence::new(input);
+	let mut output_bits = ContinuousBitSequence::new([0u8; N]);
 
-	for (i, &pos) in table.iter().enumerate() {
-		let b_in = (pos - 1) / 8;
-		let k_in = 7 - ((pos - 1) % 8);
-		let bit = (input[b_in as usize] >> k_in) & 1;
-		let b_out = i / 8;
-		let k_out = 7 - (i % 8);
-		output[b_out] |= bit << k_out;
+	for (bit_num, pos) in table.iter().map(to_0_based_pos).enumerate() {
+		let bit_value = input_bits.get_msb_bit(pos).is_set(0);
+		output_bits.set_msb_bit_exact(bit_num as u8, bit_value);
 	}
 
-	output
+	output_bits.into_inner()
+}
+
+fn to_0_based_pos(pos: &u8) -> u8 {
+	pos - 1
 }
 
 pub trait ToHalvesExt<const N: usize> {
