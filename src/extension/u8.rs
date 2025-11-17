@@ -39,8 +39,8 @@ impl PermuteExt<8> for [u8; 64] {
 }
 
 fn permute<const N: usize>(table: &[u8], input: &[u8]) -> [u8; N] {
-	let input_bits = ContinuousBitSequence::new(input);
-	let mut output_bits = ContinuousBitSequence::new([0u8; N]);
+	let input_bits = ContinuousBitSequence::from(input);
+	let mut output_bits = ContinuousBitSequence::from([0u8; N]);
 
 	for (bit_num, pos) in table.iter().map(to_0_based_pos).enumerate() {
 		let bit_value = input_bits.get_msb_bit(pos).is_set(0);

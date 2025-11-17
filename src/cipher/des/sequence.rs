@@ -60,3 +60,12 @@ where
 		self.0.as_mut()[byte_index as usize] = target_byte;
 	}
 }
+
+impl<R> From<R> for ContinuousBitSequence<R>
+where
+	R: AsRef<[u8]>,
+{
+	fn from(value: R) -> Self {
+		Self::new(value)
+	}
+}
