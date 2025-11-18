@@ -9,6 +9,18 @@ use crate::cipher::des::sequence::ContinuousBitSequence;
 /// - `MAX_POS`: The maximum valid bit position (inclusive, MSB, 1-based - in accordance with DES specification) that can be in the table.
 pub struct PermutationTable<const N: usize, const MAX_POS: u8>([u8; N]);
 
+/// Helper macro to define a validated permutation table of an inferred length.
+///
+/// Usage: perm_table!(CONST_NAME, MaxValue, [ ... data ... ]);
+macro_rules! perm_table {
+	($name:ident, $max:expr, [ $($val:expr),* $(,)? ] ) => {
+		pub const $name: $crate::cipher::des::permutation::PermutationTable<{[$($val),*].len()}, $max> =
+			$crate::cipher::des::permutation::PermutationTable::new([$($val),*]);
+	};
+}
+
+pub(crate) use perm_table;
+
 impl<const N: usize, const MAX_POS: u8> PermutationTable<N, MAX_POS> {
 	/// Creates a new `PermutationTable`, validating its contents at compile-time.
 	pub const fn new(table: [u8; N]) -> Self {
