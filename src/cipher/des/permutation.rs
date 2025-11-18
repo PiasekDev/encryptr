@@ -39,7 +39,7 @@ impl<const N: usize, const MAX_POS: u8> PermutationTable<N, MAX_POS> {
 }
 
 macro_rules! perm_table_impl {
-	($N:expr, $MAX:expr) => {
+	(N = $N:expr, MAX_POS = $MAX:expr) => {
 		impl PermutationTable<$N, $MAX> {
 			const N: usize = $N / 8;
 
@@ -50,11 +50,11 @@ macro_rules! perm_table_impl {
 	};
 }
 
-perm_table_impl!(32, 32);
-perm_table_impl!(48, 56);
-perm_table_impl!(48, 32);
-perm_table_impl!(56, 64);
-perm_table_impl!(64, 64);
+perm_table_impl!(N = 32, MAX_POS = 32);
+perm_table_impl!(N = 48, MAX_POS = 56);
+perm_table_impl!(N = 48, MAX_POS = 32);
+perm_table_impl!(N = 56, MAX_POS = 64);
+perm_table_impl!(N = 64, MAX_POS = 64);
 
 fn permute<const N: usize>(table: &[u8], input: &[u8]) -> [u8; N] {
 	let input_bits = ContinuousBitSequence::from(input);
