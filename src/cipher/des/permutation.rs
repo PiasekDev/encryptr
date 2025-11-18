@@ -38,53 +38,23 @@ impl<const N: usize, const MAX_POS: u8> PermutationTable<N, MAX_POS> {
 	}
 }
 
-impl PermutationTable<32, 32> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 4] {
-		permute::<4>(&self.0, input)
-	}
+macro_rules! perm_table_impl {
+	($N:expr, $MAX:expr) => {
+		impl PermutationTable<$N, $MAX> {
+			const N: usize = $N / 8;
+
+			pub fn permute(&self, input: &[u8]) -> [u8; Self::N] {
+				permute::<{ Self::N }>(&self.0, input)
+			}
+		}
+	};
 }
 
-impl PermutationTable<40, 40> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 5] {
-		permute::<5>(&self.0, input)
-	}
-}
-
-impl PermutationTable<48, 56> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 6] {
-		permute::<6>(&self.0, input)
-	}
-}
-
-impl PermutationTable<48, 48> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 6] {
-		permute::<6>(&self.0, input)
-	}
-}
-
-impl PermutationTable<48, 32> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 6] {
-		permute::<6>(&self.0, input)
-	}
-}
-
-impl PermutationTable<56, 56> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 7] {
-		permute::<7>(&self.0, input)
-	}
-}
-
-impl PermutationTable<56, 64> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 7] {
-		permute::<7>(&self.0, input)
-	}
-}
-
-impl PermutationTable<64, 64> {
-	pub fn permute(&self, input: &[u8]) -> [u8; 8] {
-		permute::<8>(&self.0, input)
-	}
-}
+perm_table_impl!(32, 32);
+perm_table_impl!(48, 56);
+perm_table_impl!(48, 32);
+perm_table_impl!(56, 64);
+perm_table_impl!(64, 64);
 
 fn permute<const N: usize>(table: &[u8], input: &[u8]) -> [u8; N] {
 	let input_bits = ContinuousBitSequence::from(input);
