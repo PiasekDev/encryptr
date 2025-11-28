@@ -29,26 +29,44 @@ where
 		self.0.as_ref()[byte_index as usize].get_bit(lsb_bit_index)
 	}
 
-	pub fn get_msb_bits(&self, value_bits: u8, value_shift: u8) -> u8 {
-		let start_byte_index = value_shift / 8;
-		let end_byte_index = (value_shift + value_bits - 1) / 8;
+	/// Get `count` bits starting at MSB position `offset`, returned as an LSB-aligned u8
+	///
+	/// # Examples
+	/// ```rust
+	/// use encryptr::cipher::des::sequence::ContinuousBitSequence;
+	///
+	/// let bits = ContinuousBitSequence::new(&[
+	///     0b01100001, 0b00010111, 0b10111010, 0b10000110, 0b01100101, 0b00100111,
+	/// ]);
+	/// assert_eq!(bits.get_msb_bits(6, 0),  0b011000);
+	/// assert_eq!(bits.get_msb_bits(6, 6),  0b010001);
+	/// assert_eq!(bits.get_msb_bits(6, 12), 0b011110);
+	/// assert_eq!(bits.get_msb_bits(6, 18), 0b111010);
+	/// assert_eq!(bits.get_msb_bits(6, 24), 0b100001);
+	/// assert_eq!(bits.get_msb_bits(6, 30), 0b100110);
+	/// assert_eq!(bits.get_msb_bits(6, 36), 0b010100);
+	/// assert_eq!(bits.get_msb_bits(6, 42), 0b100111);
+	/// ```
+	pub fn get_msb_bits(&self, count: u8, offset: u8) -> u8 {
+		let bytes = self.0.as_ref();
+		let first_byte_index = (offset / 8) as usize;
+		let last_byte_index = ((offset + count - 1) / 8) as usize;
 
-		if start_byte_index == end_byte_index {
-			// one byte
-			// let start_msb_bit = value_shift % 8;
-			let end_msb_bit = (value_shift + value_bits) % 8;
-			// let start_lsb_bit = 8 - end_msb_bit;
-			let end_lsb_bit = (8 - end_msb_bit) % 8;
-			self.0.as_ref()[start_byte_index as usize].get_bits(value_bits, end_lsb_bit)
+		let value_end_msb_pos = (offset + count) % 8;
+		let value_end_lsb_pos = (8 - value_end_msb_pos) % 8; // Need to % 8 this, since when value_end_msb_pos is 0, the value ends exactly at a byte boundary and so we want to read from lsb bit 0
+
+		if first_byte_index == last_byte_index {
+			// All bits are within a single byte
+			bytes[first_byte_index].get_bits(count, value_end_lsb_pos)
 		} else {
-			let start_msb_bit = value_shift % 8;
-			let end_msb_bit = (value_shift + value_bits) % 8;
-			let start_lsb_bit = 8 - end_msb_bit;
-			let end_lsb_bit = 8 - start_msb_bit;
-			let upper_value = self.0.as_ref()[start_byte_index as usize].get_bits(end_lsb_bit, 0);
-			let lower_value =
-				self.0.as_ref()[end_byte_index as usize].get_bits(end_msb_bit, start_lsb_bit);
-			upper_value << end_msb_bit | lower_value
+			// Bits span two bytes
+			let bits_in_first_byte = 8 - (offset % 8);
+			let bits_in_last_byte = value_end_msb_pos;
+
+			let upper_bits = bytes[first_byte_index].get_bits(bits_in_first_byte, 0);
+			let lower_bits = bytes[last_byte_index].get_bits(bits_in_last_byte, value_end_lsb_pos);
+
+			(upper_bits << bits_in_last_byte) | lower_bits
 		}
 	}
 
@@ -90,25 +108,5 @@ where
 {
 	fn from(value: R) -> Self {
 		Self::new(value)
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::ContinuousBitSequence;
-
-	#[test]
-	fn test_get_msb_bits() {
-		let bits = ContinuousBitSequence::new(&[
-			0b01100001, 0b00010111, 0b10111010, 0b10000110, 0b01100101, 0b00100111,
-		]);
-		assert_eq!(bits.get_msb_bits(6, 0),  0b011000);
-		assert_eq!(bits.get_msb_bits(6, 6),  0b010001);
-		assert_eq!(bits.get_msb_bits(6, 12), 0b011110);
-		assert_eq!(bits.get_msb_bits(6, 18), 0b111010);
-		assert_eq!(bits.get_msb_bits(6, 24), 0b100001);
-		assert_eq!(bits.get_msb_bits(6, 30), 0b100110);
-		assert_eq!(bits.get_msb_bits(6, 36), 0b010100);
-		assert_eq!(bits.get_msb_bits(6, 42), 0b100111);
 	}
 }
