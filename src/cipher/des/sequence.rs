@@ -12,6 +12,10 @@ where
 		Self(sequence_bytes)
 	}
 
+	pub fn len_bits(&self) -> usize {
+		self.0.as_ref().len() * 8
+	}
+
 	/// Get bit at position `pos`, counting from MSB as position 0
 	/// # Examples
 	/// ```rust
@@ -72,6 +76,62 @@ where
 
 	pub fn into_inner(self) -> R {
 		self.0
+	}
+
+	/// Returns an iterator over bit chunks of size `CHUNK_SIZE` from the sequence.
+	/// The iterator yields LSB-aligned `u8` values containing the extracted bits.
+	/// Bits are read starting from the Most Significant Bit, proceeding to the Least Significant Bit.
+	/// If the sequence length is not a multiple of `CHUNK_SIZE`, the remaining
+	/// bits at the end are ignored.
+	///
+	/// # Examples
+	/// ```rust
+	/// use encryptr::cipher::des::sequence::ContinuousBitSequence;
+	///
+	/// let bits = ContinuousBitSequence::new(&[0b10110011, 0b11001100]);
+	/// let mut chunks = bits.bit_chunks::<4>();
+	/// assert_eq!(chunks.next(), Some(0b1011));
+	/// assert_eq!(chunks.next(), Some(0b0011));
+	/// assert_eq!(chunks.next(), Some(0b1100));
+	/// assert_eq!(chunks.next(), Some(0b1100));
+	/// assert_eq!(chunks.next(), None);
+	pub fn bit_chunks<const CHUNK_SIZE: usize>(&self) -> BitChunks<'_, R, CHUNK_SIZE> {
+		const {
+			assert!(CHUNK_SIZE > 0, "Chunk size must be positive");
+			assert!(
+				CHUNK_SIZE <= 8,
+				"Resulting chunk must fit in a u8 (max 8 bits)"
+			);
+		}
+
+		BitChunks {
+			sequence: self,
+			cursor: 0,
+		}
+	}
+}
+
+pub struct BitChunks<'a, R, const CHUNK_SIZE: usize>
+where
+	R: AsRef<[u8]>,
+{
+	sequence: &'a ContinuousBitSequence<R>,
+	cursor: usize,
+}
+
+impl<R: AsRef<[u8]>, const CHUNK_SIZE: usize> Iterator for BitChunks<'_, R, CHUNK_SIZE> {
+	type Item = u8;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		if self.cursor + CHUNK_SIZE > self.sequence.len_bits() {
+			None
+		} else {
+			let bits = self
+				.sequence
+				.get_msb_bits(CHUNK_SIZE as u8, self.cursor as u8);
+			self.cursor += CHUNK_SIZE;
+			Some(bits)
+		}
 	}
 }
 

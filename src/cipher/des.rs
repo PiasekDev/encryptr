@@ -1,8 +1,10 @@
-use bit_ops::BitOps;
 use itertools::Itertools;
 
 use crate::{
-	cipher::des::key_schedule::{KeyBits, KeySchedule},
+	cipher::des::{
+		key_schedule::{KeyBits, KeySchedule},
+		sequence::ContinuousBitSequence,
+	},
 	extension::u8::{BitByBitAdditionMod2, HalvesExt, SelectExt},
 };
 
@@ -69,13 +71,16 @@ fn apply_des_rounds(block: [u8; 8], key_schedule: impl IntoIterator<Item = KeyBi
 fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
 	let permuted_expanded: [u8; 6] = constants::E.permute(&right);
 	let xored = permuted_expanded.xor(&subkey);
-	let mut chunks = to_6_bit_chunks(xored);
-	for (i, chunk) in chunks.iter_mut().enumerate() {
-		let s_box = &constants::S_BOXES[i];
-		*chunk = s_box.select(*chunk);
-	}
 
-	let packed_for_permute = chunks
+	let s_boxes_output = ContinuousBitSequence::from(&xored)
+		.bit_chunks::<6>()
+		.enumerate()
+		.map(|(i, chunk)| (constants::S_BOXES[i], chunk))
+		.map(|(s_box, chunk)| s_box.select(chunk))
+		.collect_array::<8>()
+		.expect("There should be exactly 8 chunks from 8 S-boxes");
+
+	let packed_for_permute = s_boxes_output
 		.chunks(2)
 		.map(|chunk| chunk.iter().collect_tuple().unwrap())
 		.map(|(high, low)| (high << 4) | low)
@@ -83,18 +88,6 @@ fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
 		.expect("The output of 8 S-boxes should be 8 nibbles, which can be packed into 4 bytes");
 
 	constants::P.permute(&packed_for_permute)
-}
-
-fn to_6_bit_chunks(input: [u8; 6]) -> [u8; 8] {
-	let mut front_padded_input = [0u8; 8];
-	front_padded_input[2..].copy_from_slice(&input);
-	let all_bits = u64::from_be_bytes(front_padded_input);
-	let mut output = [0u8; 8];
-	for (i, chunk) in output.iter_mut().enumerate() {
-		*chunk = all_bits.get_bits(6, (i * 6) as u64) as u8;
-	}
-	output.reverse();
-	output
 }
 
 mod constants {
