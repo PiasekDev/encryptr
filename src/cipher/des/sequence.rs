@@ -29,6 +29,29 @@ where
 		self.0.as_ref()[byte_index as usize].get_bit(lsb_bit_index)
 	}
 
+	pub fn get_msb_bits(&self, value_bits: u8, value_shift: u8) -> u8 {
+		let start_byte_index = value_shift / 8;
+		let end_byte_index = (value_shift + value_bits - 1) / 8;
+
+		if start_byte_index == end_byte_index {
+			// one byte
+			// let start_msb_bit = value_shift % 8;
+			let end_msb_bit = (value_shift + value_bits) % 8;
+			// let start_lsb_bit = 8 - end_msb_bit;
+			let end_lsb_bit = (8 - end_msb_bit) % 8;
+			self.0.as_ref()[start_byte_index as usize].get_bits(value_bits, end_lsb_bit)
+		} else {
+			let start_msb_bit = value_shift % 8;
+			let end_msb_bit = (value_shift + value_bits) % 8;
+			let start_lsb_bit = 8 - end_msb_bit;
+			let end_lsb_bit = 8 - start_msb_bit;
+			let upper_value = self.0.as_ref()[start_byte_index as usize].get_bits(end_lsb_bit, 0);
+			let lower_value =
+				self.0.as_ref()[end_byte_index as usize].get_bits(end_msb_bit, start_lsb_bit);
+			upper_value << end_msb_bit | lower_value
+		}
+	}
+
 	pub fn into_inner(self) -> R {
 		self.0
 	}
@@ -67,5 +90,25 @@ where
 {
 	fn from(value: R) -> Self {
 		Self::new(value)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::ContinuousBitSequence;
+
+	#[test]
+	fn test_get_msb_bits() {
+		let bits = ContinuousBitSequence::new(&[
+			0b01100001, 0b00010111, 0b10111010, 0b10000110, 0b01100101, 0b00100111,
+		]);
+		assert_eq!(bits.get_msb_bits(6, 0),  0b011000);
+		assert_eq!(bits.get_msb_bits(6, 6),  0b010001);
+		assert_eq!(bits.get_msb_bits(6, 12), 0b011110);
+		assert_eq!(bits.get_msb_bits(6, 18), 0b111010);
+		assert_eq!(bits.get_msb_bits(6, 24), 0b100001);
+		assert_eq!(bits.get_msb_bits(6, 30), 0b100110);
+		assert_eq!(bits.get_msb_bits(6, 36), 0b010100);
+		assert_eq!(bits.get_msb_bits(6, 42), 0b100111);
 	}
 }
