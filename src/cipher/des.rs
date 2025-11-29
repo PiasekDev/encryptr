@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use crate::{
 	cipher::des::key_schedule::{KeyBits, KeySchedule},
-	extension::u8::{BitByBitAdditionMod2, SelectExt, ToHalvesExt},
+	extension::u8::{BitByBitAdditionMod2, HalvesExt, SelectExt},
 };
 
 pub mod sequence;
@@ -58,15 +58,14 @@ fn decipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
 fn apply_des_rounds(block: [u8; 8], key_schedule: impl IntoIterator<Item = KeyBits>) -> [u8; 8] {
 	let permuted = constants::IP.permute(&block);
 	let (mut left, mut right) = permuted.to_halves();
-	for subkey in key_schedule.into_iter() {
-		let left_copy = left;
-		left = right;
-		right = left_copy.xor(&cipher_function(right, subkey));
+	for subkey in key_schedule {
+		(left, right) = (right, left.xor(&cipher_function(right, subkey)));
 	}
-	let preoutput = [right, left].concat();
+	let preoutput = <[u8; 8]>::from_halves(right, left);
 	constants::IP_INV.permute(&preoutput)
 }
 
+// TODO: use tap for everything
 fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
 	let permuted_expanded: [u8; 6] = constants::E.permute(&right);
 	let xored = permuted_expanded.xor(&subkey);
@@ -75,11 +74,13 @@ fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
 		let s_box = &constants::S_BOXES[i];
 		*chunk = s_box.select(*chunk);
 	}
-	let mut packed_for_permute = [0u8; 4];
-	for (i, chunk) in chunks.into_iter().chunks(2).into_iter().enumerate() {
-		let (high, low) = chunk.collect_tuple().unwrap();
-		packed_for_permute[i] = (high << 4) | low;
-	}
+
+	let packed_for_permute = chunks
+		.chunks(2)
+		.map(|chunk| chunk.iter().collect_tuple().unwrap())
+		.map(|(high, low)| (high << 4) | low)
+		.collect_array::<4>()
+		.expect("The output of 8 S-boxes should be 8 nibbles, which can be packed into 4 bytes");
 
 	constants::P.permute(&packed_for_permute)
 }

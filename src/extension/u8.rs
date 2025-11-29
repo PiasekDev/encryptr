@@ -2,13 +2,19 @@ use std::mem;
 
 use bit_ops::BitOps;
 
-pub trait ToHalvesExt<const N: usize> {
+pub trait HalvesExt<const N: usize> {
 	fn to_halves(self) -> ([u8; N], [u8; N]);
+
+	fn from_halves(left: [u8; N], right: [u8; N]) -> Self;
 }
 
-impl ToHalvesExt<4> for [u8; 8] {
+impl HalvesExt<4> for [u8; 8] {
 	fn to_halves(self) -> ([u8; 4], [u8; 4]) {
 		unsafe { mem::transmute(self) }
+	}
+
+	fn from_halves(left: [u8; 4], right: [u8; 4]) -> Self {
+		unsafe { mem::transmute((left, right)) }
 	}
 }
 
