@@ -2,7 +2,7 @@ use bit_ops::BitOps;
 
 use crate::extension::u8::PermuteExt;
 
-type KeyBits = [u8; 6];
+pub type KeyBits = [u8; 6];
 
 pub struct KeySchedule {
 	subkeys: [KeyBits; 16],
@@ -61,6 +61,11 @@ impl KeySchedule {
 		}
 
 		KeySchedule { subkeys }
+	}
+
+	pub fn reversed(mut self) -> Self {
+		self.subkeys.reverse();
+		self
 	}
 }
 

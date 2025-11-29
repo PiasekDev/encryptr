@@ -2,7 +2,7 @@ use bit_ops::BitOps;
 use itertools::Itertools;
 
 use crate::{
-	cipher::des::key_schedule::KeySchedule,
+	cipher::des::key_schedule::{KeyBits, KeySchedule},
 	extension::u8::{BitByBitAdditionMod2, PermuteExt, SelectExt, ToHalvesExt},
 };
 
@@ -18,23 +18,39 @@ impl DESCipher {
 	}
 
 	pub fn encode(&self, input: &[u8]) -> Vec<u8> {
+		let mut output = Vec::with_capacity(input.len());
 		for chunk in &input.iter().copied().chunks(8) {
 			let block: [u8; 8] = array_init::from_iter(chunk).unwrap();
-			encipher_block(block, self.key);
+			let encrypted_block = encipher_block(block, self.key);
+			output.extend_from_slice(&encrypted_block);
 		}
-		todo!()
+		output
 	}
 
 	pub fn decode(&self, _input: &[u8]) -> Vec<u8> {
-		// Placeholder for DES decoding logic
-		todo!()
+		let mut output = Vec::with_capacity(_input.len());
+		for chunk in &_input.iter().copied().chunks(8) {
+			let block: [u8; 8] = array_init::from_iter(chunk).unwrap();
+			let decrypted_block = decipher_block(block, self.key);
+			output.extend_from_slice(&decrypted_block);
+		}
+		output
 	}
 }
 
 fn encipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
+	let key_schedule = KeySchedule::new(key);
+	apply_des_rounds(block, key_schedule)
+}
+
+fn decipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
+	let reversed_schedule = KeySchedule::new(key).reversed();
+	apply_des_rounds(block, reversed_schedule)
+}
+
+fn apply_des_rounds(block: [u8; 8], key_schedule: impl IntoIterator<Item = KeyBits>) -> [u8; 8] {
 	let permuted = constants::IP.permute(&block);
 	let (mut left, mut right) = permuted.to_halves();
-	let key_schedule = KeySchedule::new(key);
 	for subkey in key_schedule.into_iter() {
 		let left_copy = left;
 		left = right;
@@ -73,19 +89,6 @@ fn to_6_bit_chunks(input: [u8; 6]) -> [u8; 8] {
 	}
 	output.reverse();
 	output
-}
-
-fn decipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
-	let permuted = constants::IP.permute(&block);
-	let (mut left, mut right) = permuted.to_halves();
-	let key_schedule = KeySchedule::new(key);
-	for subkey in key_schedule.into_iter().rev() {
-		let left_copy = left;
-		left = right;
-		right = left_copy.xor(&cipher_function(right, subkey));
-	}
-	let preoutput = [right, left].concat();
-	constants::IP_INV.permute(&preoutput)
 }
 
 mod constants {
