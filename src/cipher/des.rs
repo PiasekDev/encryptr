@@ -1,8 +1,9 @@
+use bit_ops::BitOps;
 use itertools::Itertools;
 
 use crate::{
 	cipher::des::key_schedule::KeySchedule,
-	extension::u8::{BitByBitAdditionMod2, PermuteExt, ToHalvesExt},
+	extension::u8::{BitByBitAdditionMod2, PermuteExt, SelectExt, ToHalvesExt},
 };
 
 mod key_schedule;
@@ -45,7 +46,25 @@ fn encipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
 
 fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
 	let permuted_expanded: [u8; 6] = constants::E.permute(&right);
-	todo!()
+	let xored = permuted_expanded.xor(&subkey);
+	let mut chunks = to_6_bit_chunks(xored);
+	for (i, chunk) in chunks.iter_mut().enumerate() {
+		let s_box = &constants::S_BOXES[i];
+		*chunk = s_box.select(*chunk);
+	}
+	constants::P.permute(&chunks)
+}
+
+fn to_6_bit_chunks(input: [u8; 6]) -> [u8; 8] {
+	let mut front_padded_input = [0u8; 8];
+	front_padded_input[2..].copy_from_slice(&input);
+	let all_bits = u64::from_be_bytes(front_padded_input);
+	let mut output = [0u8; 8];
+	for (i, chunk) in output.iter_mut().enumerate() {
+		*chunk = all_bits.get_bits(6, (i * 6) as u64) as u8;
+	}
+	output.reverse();
+	output
 }
 
 fn decipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
