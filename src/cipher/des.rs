@@ -10,6 +10,9 @@ pub mod sequence;
 
 mod key_schedule;
 
+/// Data Encryption Standard (DES) cipher implementation.
+///
+/// Based on the description from [FIPS PUB 46-3](https://csrc.nist.gov/files/pubs/fips/46-3/final/docs/fips46-3.pdf).
 pub struct DESCipher {
 	key: [u8; 8],
 }
@@ -19,6 +22,7 @@ impl DESCipher {
 		DESCipher { key }
 	}
 
+	// TODO: handle padding
 	pub fn encode(&self, input: &[u8]) -> Vec<u8> {
 		let mut output = Vec::with_capacity(input.len());
 		for chunk in &input.iter().copied().chunks(8) {
@@ -64,7 +68,6 @@ fn apply_des_rounds(block: [u8; 8], key_schedule: impl IntoIterator<Item = KeyBi
 
 fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
 	let permuted_expanded: [u8; 6] = constants::E.permute(&right);
-	println!("Expanded Right: {:02X?}", permuted_expanded);
 	let xored = permuted_expanded.xor(&subkey);
 	let mut chunks = to_6_bit_chunks(xored);
 	for (i, chunk) in chunks.iter_mut().enumerate() {
@@ -76,9 +79,8 @@ fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
 		let (high, low) = chunk.collect_tuple().unwrap();
 		packed_for_permute[i] = (high << 4) | low;
 	}
-	let permuted = constants::P.permute(&packed_for_permute);
-	println!("P-box output: {:032b}", u32::from_be_bytes(permuted));
-	permuted
+
+	constants::P.permute(&packed_for_permute)
 }
 
 fn to_6_bit_chunks(input: [u8; 6]) -> [u8; 8] {
@@ -174,43 +176,15 @@ mod tests {
 
 	const KEY: [u8; 8] = [0x13, 0x34, 0x57, 0x79, 0x9B, 0xBC, 0xDF, 0xF1];
 	const MESSAGE: [u8; 8] = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF];
+	const CIPHERTEXT: [u8; 8] = [0x85, 0xE8, 0x13, 0x54, 0x0F, 0x0A, 0xB4, 0x05];
 
+	/// Test taken from [The DES Algorithm Illustrated](https://page.math.tu-berlin.de/~kant/teaching/hess/krypto-ws2006/des.htm)
 	#[test]
-	fn kant_ip_test() {
-		let initial_permutation = constants::IP.permute(&MESSAGE);
-		const EXPECTED: [u8; 8] = [0xCC, 0x00, 0xCC, 0xFF, 0xF0, 0xAA, 0xF0, 0xAA];
-		assert_eq!(initial_permutation, EXPECTED);
-	}
-
-	#[test]
-	fn kant_halves_test() {
-		let initial_permutation = constants::IP.permute(&MESSAGE);
-		let (left, right) = initial_permutation.to_halves();
-		const EXPECTED_LEFT: [u8; 4] = [0xCC, 0x00, 0xCC, 0xFF];
-		const EXPECTED_RIGHT: [u8; 4] = [0xF0, 0xAA, 0xF0, 0xAA];
-		assert_eq!(left, EXPECTED_LEFT);
-		assert_eq!(right, EXPECTED_RIGHT);
-	}
-
-	#[test]
-	fn kant_first_iter_test() {
-		let permuted = constants::IP.permute(&MESSAGE);
-		let (mut left, mut right) = permuted.to_halves();
-		let key_schedule = KeySchedule::new(KEY);
-		let subkey = key_schedule.into_iter().next().unwrap();
-		let left_copy = left;
-		left = right;
-		right = left_copy.xor(&cipher_function(right, subkey));
-
-		const EXPECTED_KEY: [u8; 6] = [0x1B, 0x02, 0xEF, 0xFC, 0x70, 0x72];
-		const EXPECTED_LEFT: [u8; 4] = [0xF0, 0xAA, 0xF0, 0xAA];
-	}
-
-	#[test]
-	fn kant_full_encipher_test() {
+	fn orlin_grabbe() {
 		let ciphertext = encipher_block(MESSAGE, KEY);
-		const EXPECTED_CIPHERTEXT: [u8; 8] = [0x85, 0xE8, 0x13, 0x54, 0x0F, 0x0A, 0xB4, 0x05];
-		assert_eq!(ciphertext, EXPECTED_CIPHERTEXT);
+		assert_eq!(ciphertext, CIPHERTEXT);
+		let deciphered = decipher_block(ciphertext, KEY);
+		assert_eq!(deciphered, MESSAGE);
 	}
 
 	const KEYS: [[u8; 8]; 19] = [
@@ -279,13 +253,19 @@ mod tests {
 		[0x63, 0xFA, 0xC0, 0xD0, 0x34, 0xD9, 0xF7, 0x93],
 	];
 
+	/// Test: 19 Key data pairs which exercise every S-box entry
+	///
+	/// Taken from NBS Special Publication 500-20, 1980.
+	/// "Validating the Correctness of Hardware Implementations of the NBS Data Encryption Standard"
+	/// https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nbsspecialpublication500-20e1980.pdf
 	#[test]
-	fn nist_set() {
+	fn nist() {
 		for i in 0..KEYS.len() {
 			let ciphered = encipher_block(PLAINS[i], KEYS[i]);
-			println!("expected: {:02X?}", CIPHERS[i]);
-			println!("got:    : {:02X?}", ciphered);
-			assert_eq!(ciphered, CIPHERS[i], "Failed at test case {}", i + 1);
+			assert_eq!(ciphered, CIPHERS[i]);
+
+			let deciphered = decipher_block(ciphered, KEYS[i]);
+			assert_eq!(deciphered, PLAINS[i]);
 		}
 	}
 }
