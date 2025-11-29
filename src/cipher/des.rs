@@ -1,6 +1,9 @@
 use itertools::Itertools;
 
-use crate::extension::u8::{PermuteExt, ToHalvesExt};
+use crate::{
+	cipher::des::key_schedule::KeySchedule,
+	extension::u8::{BitByBitAdditionMod2, PermuteExt, ToHalvesExt},
+};
 
 mod key_schedule;
 
@@ -16,7 +19,7 @@ impl DESCipher {
 	pub fn encode(&self, input: &[u8]) -> Vec<u8> {
 		for chunk in &input.iter().copied().chunks(8) {
 			let block: [u8; 8] = array_init::from_iter(chunk).unwrap();
-			encipher_block(block);
+			encipher_block(block, self.key);
 		}
 		todo!()
 	}
@@ -27,9 +30,35 @@ impl DESCipher {
 	}
 }
 
-fn encipher_block(block: [u8; 8]) {
+fn encipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
 	let permuted = constants::IP.permute(&block);
-	let (left, right): ([u8; 4], [u8; 4]) = permuted.to_halves();
+	let (mut left, mut right) = permuted.to_halves();
+	let key_schedule = KeySchedule::new(key);
+	for subkey in key_schedule.into_iter() {
+		let left_copy = left;
+		left = right;
+		right = left_copy.xor(&cipher_function(right, subkey));
+	}
+	let preoutput = [right, left].concat();
+	constants::IP_INV.permute(&preoutput)
+}
+
+fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
+	let permuted_expanded: [u8; 6] = constants::E.permute(&right);
+	todo!()
+}
+
+fn decipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
+	let permuted = constants::IP_INV.permute(&block);
+	let (mut left, mut right) = permuted.to_halves();
+	let key_schedule = KeySchedule::new(key);
+	for subkey in key_schedule.into_iter().rev() {
+		let right_copy = right;
+		right = left;
+		left = right_copy.xor(&cipher_function(left, subkey));
+	}
+	let preoutput = [right, left].concat();
+	constants::IP.permute(&preoutput)
 }
 
 mod constants {

@@ -46,3 +46,17 @@ impl ToHalvesExt<4> for [u8; 8] {
 		unsafe { mem::transmute(self) }
 	}
 }
+
+pub trait BitByBitAdditionMod2 {
+	fn xor(&self, other: &Self) -> Self;
+}
+
+impl<const N: usize> BitByBitAdditionMod2 for [u8; N] {
+	fn xor(&self, other: &Self) -> Self {
+		let mut result = [0u8; N];
+		for i in 0..N {
+			result[i] = self[i] ^ other[i];
+		}
+		result
+	}
+}
