@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::extension::u8::PermuteExt;
+use crate::extension::u8::{PermuteExt, ToHalvesExt};
 
 mod key_schedule;
 
@@ -28,8 +28,8 @@ impl DESCipher {
 }
 
 fn encipher_block(block: [u8; 8]) {
-	let permuted = constants::IP.permute(&block).into_inner();
-	let (left, right) = permuted.split_at(4);
+	let permuted = constants::IP.permute(&block);
+	let (left, right): ([u8; 4], [u8; 4]) = permuted.to_halves();
 }
 
 mod constants {

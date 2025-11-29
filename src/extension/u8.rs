@@ -1,34 +1,28 @@
+use std::mem;
+
 pub trait PermuteExt<const N: usize> {
-	fn permute(&self, input: &[u8]) -> PermutedBytes<N>;
-}
-
-pub struct PermutedBytes<const N: usize>([u8; N]);
-
-impl<const N: usize> PermutedBytes<N> {
-	pub fn into_inner(self) -> [u8; N] {
-		self.0
-	}
+	fn permute(&self, input: &[u8]) -> [u8; N];
 }
 
 impl PermuteExt<6> for [u8; 48] {
-	fn permute(&self, input: &[u8]) -> PermutedBytes<6> {
-		permute_impl::<6>(self, input)
+	fn permute(&self, input: &[u8]) -> [u8; 6] {
+		permute::<6>(self, input)
 	}
 }
 
 impl PermuteExt<7> for [u8; 56] {
-	fn permute(&self, input: &[u8]) -> PermutedBytes<7> {
-		permute_impl::<7>(self, input)
+	fn permute(&self, input: &[u8]) -> [u8; 7] {
+		permute::<7>(self, input)
 	}
 }
 
 impl PermuteExt<8> for [u8; 64] {
-	fn permute(&self, input: &[u8]) -> PermutedBytes<8> {
-		permute_impl::<8>(self, input)
+	fn permute(&self, input: &[u8]) -> [u8; 8] {
+		permute::<8>(self, input)
 	}
 }
 
-fn permute_impl<const N: usize>(table: &[u8], input: &[u8]) -> PermutedBytes<N> {
+fn permute<const N: usize>(table: &[u8], input: &[u8]) -> [u8; N] {
 	let mut output = [0u8; N];
 
 	for (i, &pos) in table.iter().enumerate() {
@@ -40,5 +34,15 @@ fn permute_impl<const N: usize>(table: &[u8], input: &[u8]) -> PermutedBytes<N> 
 		output[b_out] |= bit << k_out;
 	}
 
-	PermutedBytes(output)
+	output
+}
+
+pub trait ToHalvesExt<const N: usize> {
+	fn to_halves(self) -> ([u8; N], [u8; N]);
+}
+
+impl ToHalvesExt<4> for [u8; 8] {
+	fn to_halves(self) -> ([u8; 4], [u8; 4]) {
+		unsafe { mem::transmute(self) }
+	}
 }
