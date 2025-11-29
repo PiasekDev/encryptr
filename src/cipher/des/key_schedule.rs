@@ -43,6 +43,21 @@ impl KeySchedule {
 			let cd = combine(&c, &d);
 			let permuted_subkey: [u8; 6] = constants::PC_2.permute(&cd);
 			*subkey = permuted_subkey;
+
+			println!(
+				"K{}: {:048b}",
+				i + 1,
+				u64::from_be_bytes([
+					0,
+					0,
+					permuted_subkey[0],
+					permuted_subkey[1],
+					permuted_subkey[2],
+					permuted_subkey[3],
+					permuted_subkey[4],
+					permuted_subkey[5]
+				])
+			);
 		}
 
 		KeySchedule { subkeys }
