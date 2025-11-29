@@ -80,9 +80,9 @@ fn decipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
 	let (mut left, mut right) = permuted.to_halves();
 	let key_schedule = KeySchedule::new(key);
 	for subkey in key_schedule.into_iter().rev() {
-		let right_copy = right;
-		right = left;
-		left = right_copy.xor(&cipher_function(left, subkey));
+		let left_copy = left;
+		left = right;
+		right = left_copy.xor(&cipher_function(right, subkey));
 	}
 	let preoutput = [right, left].concat();
 	constants::IP_INV.permute(&preoutput)
