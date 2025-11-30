@@ -5,7 +5,7 @@ use crate::{
 		key_schedule::{KeyBits, KeySchedule},
 		sequence::ContinuousBitSequence,
 	},
-	extension::u8::{BitByBitAdditionMod2, HalvesExt, SelectExt},
+	extension::u8::{BitByBitAdditionMod2, SelectExt, ToHalvesExt},
 };
 
 pub mod sequence;
@@ -63,7 +63,7 @@ fn apply_des_rounds(block: [u8; 8], key_schedule: impl IntoIterator<Item = KeyBi
 	for subkey in key_schedule {
 		(left, right) = (right, left.xor(&cipher_function(right, subkey)));
 	}
-	let preoutput = <[u8; 8]>::from_halves(right, left);
+	let preoutput: [u8; 8] = [right, left].as_flattened().try_into().unwrap();
 	constants::IP_INV.permute(&preoutput)
 }
 
