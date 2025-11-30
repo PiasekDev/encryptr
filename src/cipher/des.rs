@@ -63,8 +63,12 @@ fn apply_des_rounds(block: [u8; 8], key_schedule: impl IntoIterator<Item = KeyBi
 	for subkey in key_schedule {
 		(left, right) = (right, left.xor(&cipher_function(right, subkey)));
 	}
-	let preoutput: [u8; 8] = [right, left].as_flattened().try_into().unwrap();
-	constants::IP_INV.permute(&preoutput)
+	let binding = [right, left];
+	let preoutput = binding
+		.as_flattened()
+		.as_array()
+		.expect("2x [u8; 4] should flatten to 1x [u8; 8]");
+	constants::IP_INV.permute(preoutput)
 }
 
 // TODO: use tap for everything
