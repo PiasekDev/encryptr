@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-array-init = "2.1.0"
 bimap = "0.6.3"
 bit_ops = "0.2.3"
 itertools = "0.14.0"
