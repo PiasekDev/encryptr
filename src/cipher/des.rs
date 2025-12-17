@@ -2,6 +2,7 @@ use itertools::Itertools;
 
 use crate::{
 	cipher::des::{
+		input::PKCS7PaddedInput,
 		key_schedule::{KeyBits, KeySchedule},
 		sequence::ContinuousBitSequence,
 	},
@@ -10,6 +11,7 @@ use crate::{
 
 pub mod sequence;
 
+mod input;
 mod key_schedule;
 mod permutation;
 
@@ -25,15 +27,11 @@ impl DESCipher {
 		DESCipher { key }
 	}
 
-	// TODO: handle padding
 	pub fn encode(&self, input: &[u8]) -> Vec<u8> {
-		let mut output = Vec::with_capacity(input.len());
-		for chunk in &input.iter().copied().chunks(8) {
-			let block: [u8; 8] = array_init::from_iter(chunk).unwrap();
-			let encrypted_block = encipher_block(block, self.key);
-			output.extend_from_slice(&encrypted_block);
-		}
-		output
+		PKCS7PaddedInput::<8>::from(input)
+			.into_iter()
+			.flat_map(|block| encipher_block(block, self.key))
+			.collect()
 	}
 
 	pub fn decode(&self, _input: &[u8]) -> Vec<u8> {
