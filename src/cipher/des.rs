@@ -292,4 +292,48 @@ mod tests {
 			assert_eq!(deciphered, PLAINS[i]);
 		}
 	}
+
+	#[test]
+	fn roundtrip_empty() {
+		let cipher = DESCipher::new(KEY);
+		let encoded = cipher.encode(&[]);
+		let decoded = cipher.decode(&encoded).unwrap();
+		assert_eq!(decoded, vec![]);
+	}
+
+	#[test]
+	fn roundtrip_partial_block() {
+		let cipher = DESCipher::new(KEY);
+		let input = b"hello";
+		let encoded = cipher.encode(input);
+		assert_eq!(encoded.len(), 8); // padded to one block
+		let decoded = cipher.decode(&encoded).unwrap();
+		assert_eq!(decoded, input);
+	}
+
+	#[test]
+	fn roundtrip_exact_block() {
+		let cipher = DESCipher::new(KEY);
+		let input = b"12345678";
+		let encoded = cipher.encode(input);
+		assert_eq!(encoded.len(), 16); // needs extra block for padding
+		let decoded = cipher.decode(&encoded).unwrap();
+		assert_eq!(decoded, input);
+	}
+
+	#[test]
+	fn roundtrip_multiple_blocks() {
+		let cipher = DESCipher::new(KEY);
+		let input = b"hello world, this is a longer message!";
+		let encoded = cipher.encode(input);
+		let decoded = cipher.decode(&encoded).unwrap();
+		assert_eq!(decoded, input);
+	}
+
+	#[test]
+	fn decode_invalid_length() {
+		let cipher = DESCipher::new(KEY);
+		let result = cipher.decode(&[1, 2, 3]); // not multiple of 8
+		assert!(matches!(result, Err(DESDecodeError::InvalidLength)));
+	}
 }
