@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{
 	cipher::des::{
-		input::PKCS7PaddedInput,
+		input::{PKCS7PaddedData, PaddingParseError},
 		key_schedule::{KeyBits, KeySchedule},
 		sequence::ContinuousBitSequence,
 	},
@@ -22,41 +22,53 @@ pub struct DESCipher {
 	key: [u8; 8],
 }
 
+#[derive(Debug)]
+pub enum DESDecodeError {
+	InvalidLength,
+	PaddingError(PaddingParseError),
+}
+
 impl DESCipher {
 	pub fn new(key: [u8; 8]) -> Self {
 		DESCipher { key }
 	}
 
 	pub fn encode(&self, input: &[u8]) -> Vec<u8> {
-		PKCS7PaddedInput::<8>::from(input)
+		PKCS7PaddedData::<8>::pad(input)
 			.into_iter()
-			.flat_map(|block| encipher_block(block, self.key))
+			.flat_map(|block| encipher_block(&block, self.key))
 			.collect()
 	}
 
-	pub fn decode(&self, _input: &[u8]) -> Vec<u8> {
-		let mut output = Vec::with_capacity(_input.len());
-		for chunk in &_input.iter().copied().chunks(8) {
-			let block: [u8; 8] = array_init::from_iter(chunk).unwrap();
-			let decrypted_block = decipher_block(block, self.key);
-			output.extend_from_slice(&decrypted_block);
+	pub fn decode(&self, input: &[u8]) -> Result<Vec<u8>, DESDecodeError> {
+		let (chunks, remainder) = input.as_chunks();
+		if !remainder.is_empty() {
+			return Err(DESDecodeError::InvalidLength);
 		}
-		output
+
+		let decrypted_blocks = chunks
+			.iter()
+			.map(|block| decipher_block(block, self.key))
+			.collect_vec();
+
+		PKCS7PaddedData::try_from_blocks(decrypted_blocks)
+			.map(|padded| padded.into_unpadded())
+			.map_err(DESDecodeError::PaddingError)
 	}
 }
 
-fn encipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
+fn encipher_block(block: &[u8; 8], key: [u8; 8]) -> [u8; 8] {
 	let key_schedule = KeySchedule::new(key);
 	apply_des_rounds(block, key_schedule)
 }
 
-fn decipher_block(block: [u8; 8], key: [u8; 8]) -> [u8; 8] {
+fn decipher_block(block: &[u8; 8], key: [u8; 8]) -> [u8; 8] {
 	let reversed_schedule = KeySchedule::new(key).reversed();
 	apply_des_rounds(block, reversed_schedule)
 }
 
-fn apply_des_rounds(block: [u8; 8], key_schedule: impl IntoIterator<Item = KeyBits>) -> [u8; 8] {
-	let permuted = constants::IP.permute(&block);
+fn apply_des_rounds(block: &[u8; 8], key_schedule: impl IntoIterator<Item = KeyBits>) -> [u8; 8] {
+	let permuted = constants::IP.permute(block);
 	let (mut left, mut right) = permuted.to_halves();
 	for subkey in key_schedule {
 		(left, right) = (right, left.xor(&cipher_function(right, subkey)));
@@ -193,9 +205,9 @@ mod tests {
 	/// Test taken from [The DES Algorithm Illustrated](https://page.math.tu-berlin.de/~kant/teaching/hess/krypto-ws2006/des.htm)
 	#[test]
 	fn orlin_grabbe() {
-		let ciphertext = encipher_block(MESSAGE, KEY);
+		let ciphertext = encipher_block(&MESSAGE, KEY);
 		assert_eq!(ciphertext, CIPHERTEXT);
-		let deciphered = decipher_block(ciphertext, KEY);
+		let deciphered = decipher_block(&ciphertext, KEY);
 		assert_eq!(deciphered, MESSAGE);
 	}
 
@@ -273,10 +285,10 @@ mod tests {
 	#[test]
 	fn nist() {
 		for i in 0..KEYS.len() {
-			let ciphered = encipher_block(PLAINS[i], KEYS[i]);
+			let ciphered = encipher_block(&PLAINS[i], KEYS[i]);
 			assert_eq!(ciphered, CIPHERS[i]);
 
-			let deciphered = decipher_block(ciphered, KEYS[i]);
+			let deciphered = decipher_block(&ciphered, KEYS[i]);
 			assert_eq!(deciphered, PLAINS[i]);
 		}
 	}
