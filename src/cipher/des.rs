@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use tap::Pipe;
 
 use crate::{
 	cipher::des::{
@@ -77,27 +78,23 @@ fn apply_des_rounds(block: &[u8; 8], key_schedule: impl IntoIterator<Item = KeyB
 	constants::IP_INV.permute(&preoutput)
 }
 
-// TODO: use tap for everything
 fn cipher_function(right: [u8; 4], subkey: [u8; 6]) -> [u8; 4] {
-	let permuted_expanded: [u8; 6] = constants::E.permute(&right);
-	let xored = permuted_expanded.xor(&subkey);
-
-	let s_boxes_output = ContinuousBitSequence::from(&xored)
+	constants::E
+		.permute(&right)
+		.pipe(|permuted| permuted.xor(&subkey))
+		.pipe(ContinuousBitSequence::from)
 		.bit_chunks::<6>()
 		.enumerate()
 		.map(|(i, chunk)| (constants::S_BOXES[i], chunk))
 		.map(|(s_box, chunk)| s_box.select(chunk))
 		.collect_array::<8>()
-		.expect("There should be exactly 8 chunks from 8 S-boxes");
-
-	let packed_for_permute = s_boxes_output
+		.expect("There should be exactly 8 chunks from 8 S-boxes")
 		.chunks(2)
 		.map(|chunk| chunk.iter().collect_tuple().unwrap())
 		.map(|(high, low)| (high << 4) | low)
 		.collect_array::<4>()
-		.expect("The output of 8 S-boxes should be 8 nibbles, which can be packed into 4 bytes");
-
-	constants::P.permute(&packed_for_permute)
+		.expect("The output of 8 S-boxes should be 8 nibbles, which can be packed into 4 bytes")
+		.pipe(|bytes| constants::P.permute(&bytes))
 }
 
 mod constants {

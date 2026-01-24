@@ -6,7 +6,6 @@ pub struct PKCS7PaddedData<const CHUNK_SIZE: usize>(Vec<[u8; CHUNK_SIZE]>);
 
 #[derive(Debug)]
 pub enum PaddingParseError {
-	InvalidDataLength,
 	InsufficientDataLength,
 	InvalidPaddingByte,
 }
