@@ -2,6 +2,7 @@ pub mod cipher {
 	pub mod affine;
 	pub mod caesar;
 	pub mod des;
+	pub mod rsa;
 	pub mod substitution;
 	pub mod vigenere;
 
