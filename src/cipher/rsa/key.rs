@@ -2,19 +2,42 @@ use num_bigint::BigUint;
 
 use super::bits::{KeyBits, generate_prime};
 
+#[derive(Clone)]
 pub struct RSAKeyPair {
 	pub public_key: RSAPublicKey,
 	pub private_key: RSAPrivateKey,
 }
 
+#[derive(Clone)]
 pub struct RSAPublicKey {
 	pub n: BigUint,
 	pub e: BigUint,
 }
 
+impl RSAPublicKey {
+	/// Returns the byte length of the modulus `n`.
+	///
+	/// This is the number of bytes needed to represent the modulus,
+	/// which determines the block size for RSA operations.
+	pub fn byte_length(&self) -> usize {
+		(self.n.bits() as usize).div_ceil(8)
+	}
+}
+
+#[derive(Clone)]
 pub struct RSAPrivateKey {
 	pub n: BigUint,
 	pub d: BigUint,
+}
+
+impl RSAPrivateKey {
+	/// Returns the byte length of the modulus `n`.
+	///
+	/// This is the number of bytes needed to represent the modulus,
+	/// which determines the block size for RSA operations.
+	pub fn byte_length(&self) -> usize {
+		(self.n.bits() as usize).div_ceil(8)
+	}
 }
 
 impl RSAKeyPair {
@@ -106,5 +129,46 @@ mod tests {
 	fn choose_e_prefers_default() {
 		let phi_n = BigUint::from(65539u64);
 		assert_eq!(choose_e(&phi_n), BigUint::from(DEFAULT_PUBLIC_EXPONENT));
+	}
+
+	#[test]
+	fn byte_length_512_bit_key() {
+		// 512 bits = 64 bytes
+		let n: BigUint = BigUint::from(1u8) << 511; // 2^511, a 512-bit number
+		let public_key = RSAPublicKey {
+			n: n.clone(),
+			e: BigUint::from(65537u64),
+		};
+		let private_key = RSAPrivateKey {
+			n,
+			d: BigUint::from(12345u64),
+		};
+
+		assert_eq!(public_key.byte_length(), 64);
+		assert_eq!(private_key.byte_length(), 64);
+	}
+
+	#[test]
+	fn byte_length_small_key() {
+		// 8 bits = 1 byte
+		let n = BigUint::from(200u8); // 8-bit number
+		let public_key = RSAPublicKey {
+			n: n.clone(),
+			e: BigUint::from(3u64),
+		};
+
+		assert_eq!(public_key.byte_length(), 1);
+	}
+
+	#[test]
+	fn byte_length_non_byte_aligned() {
+		// 10 bits = 2 bytes (rounded up)
+		let n = BigUint::from(1u16) << 9; // 2^9 = 512, a 10-bit number
+		let public_key = RSAPublicKey {
+			n,
+			e: BigUint::from(3u64),
+		};
+
+		assert_eq!(public_key.byte_length(), 2);
 	}
 }
