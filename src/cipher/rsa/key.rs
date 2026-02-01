@@ -1,5 +1,6 @@
-use num_bigint::{BigUint, RandomBits};
-use rand::prelude::Distribution;
+use num_bigint::BigUint;
+
+use super::bits::{KeyBits, generate_prime};
 
 pub struct RSAKeyPair {
 	pub public_key: RSAPublicKey,
@@ -17,7 +18,7 @@ pub struct RSAPrivateKey {
 }
 
 impl RSAKeyPair {
-	pub fn generate(bits: u64, rng: &mut impl rand::Rng) -> Self {
+	pub fn generate(bits: KeyBits, rng: &mut impl rand::Rng) -> Self {
 		let (p, q) = generate_pq(bits, rng);
 
 		let n = &p * &q;
@@ -34,22 +35,8 @@ impl RSAKeyPair {
 	}
 }
 
-fn choose_e(phi_n: &BigUint) -> BigUint {
-	const DEFAULT_PUBLIC_EXPONENT: u64 = 65537;
-	let mut e = BigUint::from(DEFAULT_PUBLIC_EXPONENT);
-
-	loop {
-		if BigUint::from(1u8) < e && e < *phi_n && gcd(&e, phi_n) == BigUint::from(1u8) {
-			return e;
-		}
-
-		e += BigUint::from(2u8);
-	}
-}
-
-pub fn generate_pq(bits: u64, rng: &mut impl rand::Rng) -> (BigUint, BigUint) {
-	let p_bits = bits / 2;
-	let q_bits = bits - p_bits;
+pub fn generate_pq(bits: KeyBits, rng: &mut impl rand::Rng) -> (BigUint, BigUint) {
+	let (p_bits, q_bits) = bits.split();
 
 	loop {
 		let p = generate_prime(p_bits, rng);
@@ -60,19 +47,31 @@ pub fn generate_pq(bits: u64, rng: &mut impl rand::Rng) -> (BigUint, BigUint) {
 	}
 }
 
-pub fn generate_prime(bits: u64, rng: &mut impl rand::Rng) -> BigUint {
-	loop {
-		let mut candidate: BigUint = RandomBits::new(bits).sample(rng);
-		// Even candidates cannot be prime
-		candidate.set_bit(0, true);
+fn choose_e(phi_n: &BigUint) -> BigUint {
+	const DEFAULT_PUBLIC_EXPONENT: u64 = 65537;
+	const FALLBACK_EXPONENTS: [u64; 5] = [3, 5, 17, 257, DEFAULT_PUBLIC_EXPONENT];
+	let mut e = BigUint::from(DEFAULT_PUBLIC_EXPONENT);
 
-		// Force set the highest bit to ensure the number has the desired bit length (the random generator might set the highest bits to zero)
-		candidate.set_bit(bits - 1, true);
-
-		if miller_rabin::is_prime(&candidate, 40) {
-			return candidate;
-		}
+	// Try smaller exponents, since if phi_n <= 65537, e < phi_n in is_valid_public_exponent would never hold
+	if phi_n <= &e {
+		return FALLBACK_EXPONENTS
+			.into_iter()
+			.map(BigUint::from)
+			.find(|e| is_valid_public_exponent(phi_n, e))
+			.expect("phi_n is even for odd primes and cannot be divisible by all of 3, 5, 17, and 257, so a fallback exponent must exist");
 	}
+
+	loop {
+		if is_valid_public_exponent(phi_n, &e) {
+			return e;
+		}
+
+		e += BigUint::from(2u8);
+	}
+}
+
+fn is_valid_public_exponent(phi_n: &BigUint, e: &BigUint) -> bool {
+	BigUint::from(1u8) < *e && *e < *phi_n && gcd(e, phi_n) == BigUint::from(1u8)
 }
 
 pub fn gcd(a: &BigUint, b: &BigUint) -> BigUint {
