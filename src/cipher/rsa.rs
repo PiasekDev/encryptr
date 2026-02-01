@@ -4,11 +4,15 @@ use thiserror::Error;
 pub mod bits;
 pub mod key;
 pub mod padding;
+pub mod serialization;
 pub mod state;
 
 use padding::biguint_to_bytes_exact;
 pub use padding::{ByteEncryptionPadding, NoPadding, PKCS1v15, PaddingError, RSAPadding};
 use state::{CanDecrypt, CanEncrypt};
+
+pub use der::pem::LineEnding;
+pub use der::{Decode, Encode};
 
 /// Returned when the input is outside the valid range [0, n).
 #[derive(Debug, Error)]

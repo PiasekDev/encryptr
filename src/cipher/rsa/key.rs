@@ -2,13 +2,13 @@ use num_bigint::BigUint;
 
 use super::bits::{KeyBits, generate_prime};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RSAKeyPair {
 	pub public_key: RSAPublicKey,
 	pub private_key: RSAPrivateKey,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RSAPublicKey {
 	pub n: BigUint,
 	pub e: BigUint,
@@ -24,7 +24,7 @@ impl RSAPublicKey {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RSAPrivateKey {
 	pub n: BigUint,
 	pub d: BigUint,
