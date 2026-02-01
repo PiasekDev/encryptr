@@ -85,3 +85,30 @@ pub(crate) fn generate_prime(bits: PrimeBits, rng: &mut impl rand::Rng) -> BigUi
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use rand::rngs::StdRng;
+	use rand::SeedableRng;
+
+	#[test]
+	fn key_bits_minimum() {
+		assert!(KeyBits::try_from(KeyBits::MIN - 1).is_err());
+		assert!(KeyBits::try_from(KeyBits::MIN).is_ok());
+	}
+
+	#[test]
+	fn prime_bits_minimum() {
+		assert!(PrimeBits::try_from(PrimeBits::MIN - 1).is_err());
+		assert!(PrimeBits::try_from(PrimeBits::MIN).is_ok());
+	}
+
+	#[test]
+	fn generate_prime_min_bits() {
+		let bits = PrimeBits::try_from(PrimeBits::MIN).unwrap();
+		let mut rng = StdRng::seed_from_u64(1);
+		let prime = generate_prime(bits, &mut rng);
+		assert_eq!(prime, BigUint::from(3u8));
+	}
+}

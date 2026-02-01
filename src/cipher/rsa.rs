@@ -41,3 +41,44 @@ impl RSACipher {
 		Ok(ciphertext.modpow(&self.key_pair.private_key.d, &self.key_pair.private_key.n))
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::cipher::rsa::bits::KeyBits;
+	use rand::rngs::StdRng;
+	use rand::SeedableRng;
+
+	fn key_pair() -> key::RSAKeyPair {
+		let bits = KeyBits::try_from(5).unwrap();
+		let mut rng = StdRng::seed_from_u64(42);
+		key::RSAKeyPair::generate(bits, &mut rng)
+	}
+
+	#[test]
+	fn encipher_rejects_large_plaintext() {
+		let cipher = RSACipher::new(key_pair());
+		let modulus = cipher.key_pair.public_key.n.clone();
+		let err = cipher.encipher(&modulus).unwrap_err();
+		assert_eq!(err.input, modulus);
+		assert_eq!(err.modulus, cipher.key_pair.public_key.n);
+	}
+
+	#[test]
+	fn decipher_rejects_large_ciphertext() {
+		let cipher = RSACipher::new(key_pair());
+		let modulus = cipher.key_pair.private_key.n.clone();
+		let err = cipher.decipher(&modulus).unwrap_err();
+		assert_eq!(err.input, modulus);
+		assert_eq!(err.modulus, cipher.key_pair.private_key.n);
+	}
+
+	#[test]
+	fn roundtrip_small_message() {
+		let cipher = RSACipher::new(key_pair());
+		let plaintext = BigUint::from(2u8);
+		let ciphertext = cipher.encipher(&plaintext).unwrap();
+		let decoded = cipher.decipher(&ciphertext).unwrap();
+		assert_eq!(decoded, plaintext);
+	}
+}

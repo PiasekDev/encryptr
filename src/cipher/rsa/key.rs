@@ -47,9 +47,10 @@ pub fn generate_pq(bits: KeyBits, rng: &mut impl rand::Rng) -> (BigUint, BigUint
 	}
 }
 
+const DEFAULT_PUBLIC_EXPONENT: u64 = 65537;
+const FALLBACK_EXPONENTS: [u64; 5] = [3, 5, 17, 257, DEFAULT_PUBLIC_EXPONENT];
+
 fn choose_e(phi_n: &BigUint) -> BigUint {
-	const DEFAULT_PUBLIC_EXPONENT: u64 = 65537;
-	const FALLBACK_EXPONENTS: [u64; 5] = [3, 5, 17, 257, DEFAULT_PUBLIC_EXPONENT];
 	let mut e = BigUint::from(DEFAULT_PUBLIC_EXPONENT);
 
 	// Try smaller exponents, since if phi_n <= 65537, e < phi_n in is_valid_public_exponent would never hold
@@ -83,4 +84,27 @@ pub fn gcd(a: &BigUint, b: &BigUint) -> BigUint {
 	}
 
 	a
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn choose_e_for_small_phi() {
+		let phi_n = BigUint::from(8u8);
+		assert_eq!(choose_e(&phi_n), BigUint::from(3u8));
+	}
+
+	#[test]
+	fn choose_e_for_small_phi_with_non_coprime_first() {
+		let phi_n = BigUint::from(12u8);
+		assert_eq!(choose_e(&phi_n), BigUint::from(5u8));
+	}
+
+	#[test]
+	fn choose_e_prefers_default() {
+		let phi_n = BigUint::from(65539u64);
+		assert_eq!(choose_e(&phi_n), BigUint::from(DEFAULT_PUBLIC_EXPONENT));
+	}
 }
