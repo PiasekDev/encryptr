@@ -89,8 +89,8 @@ pub(crate) fn generate_prime(bits: PrimeBits, rng: &mut impl rand::Rng) -> BigUi
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use rand::rngs::StdRng;
 	use rand::SeedableRng;
+	use rand::rngs::StdRng;
 
 	#[test]
 	fn key_bits_minimum() {
