@@ -42,18 +42,27 @@ impl RSAPrivateKey {
 
 impl RSAKeyPair {
 	pub fn generate(bits: KeyBits, rng: &mut impl rand::Rng) -> Self {
-		let (p, q) = generate_pq(bits, rng);
+		loop {
+			let (p, q) = generate_pq(bits, rng);
+			let n = &p * &q;
 
-		let n = &p * &q;
-		let phi_n = (&p - BigUint::from(1u8)) * (&q - BigUint::from(1u8));
-		let e = choose_e(&phi_n);
-		let d = e.modinv(&phi_n).expect("e should be coprime to phi_n");
+			// Ensure n has exactly the requested bit length.
+			// The product of two k-bit primes can be anywhere from 2k-1 to 2k bits.
+			// Regenerate if we got a short modulus.
+			if n.bits() < bits.get() {
+				continue;
+			}
 
-		let public_key = RSAPublicKey { n: n.clone(), e };
-		let private_key = RSAPrivateKey { n, d };
-		Self {
-			public_key,
-			private_key,
+			let phi_n = (&p - BigUint::from(1u8)) * (&q - BigUint::from(1u8));
+			let e = choose_e(&phi_n);
+			let d = e.modinv(&phi_n).expect("e should be coprime to phi_n");
+
+			let public_key = RSAPublicKey { n: n.clone(), e };
+			let private_key = RSAPrivateKey { n, d };
+			return Self {
+				public_key,
+				private_key,
+			};
 		}
 	}
 }
@@ -112,6 +121,8 @@ pub fn gcd(a: &BigUint, b: &BigUint) -> BigUint {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use rand::SeedableRng;
+	use rand::rngs::StdRng;
 
 	#[test]
 	fn choose_e_for_small_phi() {
@@ -129,6 +140,28 @@ mod tests {
 	fn choose_e_prefers_default() {
 		let phi_n = BigUint::from(65539u64);
 		assert_eq!(choose_e(&phi_n), BigUint::from(DEFAULT_PUBLIC_EXPONENT));
+	}
+
+	#[test]
+	fn generated_key_has_exact_bit_length() {
+		// Test that generated keys always have exactly the requested bit length
+		let test_cases = [64, 128, 256, 512, 1024];
+		let mut rng = StdRng::seed_from_u64(42);
+
+		for target_bits in test_cases {
+			let bits = KeyBits::try_from(target_bits).unwrap();
+			let key_pair = RSAKeyPair::generate(bits, &mut rng);
+			assert_eq!(
+				key_pair.public_key.n.bits(),
+				target_bits,
+				"generated {target_bits}-bit key has wrong bit length"
+			);
+			assert_eq!(
+				key_pair.private_key.n.bits(),
+				target_bits,
+				"private key n should match public key n bit length"
+			);
+		}
 	}
 
 	#[test]

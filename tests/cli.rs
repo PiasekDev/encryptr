@@ -709,8 +709,7 @@ mod rsa {
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Key Pair"))
-			// Bit length may be 511 or 512 depending on MSB of n
-			.stdout(predicate::str::is_match(r"Bit Length:\s+51[12] bits").unwrap())
+			.stdout(predicate::str::contains("Bit Length:          512 bits"))
 			.stdout(predicate::str::contains("Modulus (n):         0x"))
 			.stdout(predicate::str::contains("Public Exponent (e): 65537"))
 			.stdout(predicate::str::contains("Private Exponent (d): 0x"));
@@ -753,8 +752,7 @@ mod rsa {
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Public Key"))
-			// Bit length may be 511 or 512 depending on MSB of n
-			.stdout(predicate::str::is_match(r"Bit Length:\s+51[12] bits").unwrap())
+			.stdout(predicate::str::contains("Bit Length:          512 bits"))
 			.stdout(predicate::str::contains("Modulus (n):         0x"))
 			.stdout(predicate::str::contains("Public Exponent (e): 65537"))
 			// Should NOT contain private exponent
@@ -798,8 +796,7 @@ mod rsa {
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Private Key"))
-			// Bit length may be 511 or 512 depending on MSB of n
-			.stdout(predicate::str::is_match(r"Bit Length:\s+51[12] bits").unwrap())
+			.stdout(predicate::str::contains("Bit Length:          512 bits"))
 			.stdout(predicate::str::contains("Modulus (n):         0x"))
 			.stdout(predicate::str::contains("Private Exponent (d): 0x"))
 			// Should NOT contain public exponent
