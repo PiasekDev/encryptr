@@ -412,6 +412,278 @@ mod rsa {
 			.success()
 			.stdout(format!("{plaintext}\n"));
 	}
+
+	#[test]
+	fn export_private_key() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.pem");
+		let private_path = temp_dir.path().join("private.pem");
+
+		// Generate keypair
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Export private key
+		encryptr()
+			.args([
+				"rsa",
+				"export-private",
+				"--key-pair",
+				keypair_path.to_str().unwrap(),
+				"--output",
+				private_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Verify private key file
+		let content = fs::read_to_string(&private_path).unwrap();
+		assert!(content.contains("BEGIN ENCRYPTR RSA PRIVATE KEY"));
+		assert!(content.contains("END ENCRYPTR RSA PRIVATE KEY"));
+	}
+
+	#[test]
+	fn generate_separate_files() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let public_path = temp_dir.path().join("pub.pem");
+		let private_path = temp_dir.path().join("priv.pem");
+
+		// Generate to separate files
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--public-key",
+				public_path.to_str().unwrap(),
+				"--private-key",
+				private_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Verify both files exist with correct content
+		let pub_content = fs::read_to_string(&public_path).unwrap();
+		assert!(pub_content.contains("BEGIN ENCRYPTR RSA PUBLIC KEY"));
+
+		let priv_content = fs::read_to_string(&private_path).unwrap();
+		assert!(priv_content.contains("BEGIN ENCRYPTR RSA PRIVATE KEY"));
+	}
+
+	#[test]
+	fn generate_public_only() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let public_path = temp_dir.path().join("pub.pem");
+
+		// Generate only public key
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--public-key",
+				public_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Verify public key file exists
+		let content = fs::read_to_string(&public_path).unwrap();
+		assert!(content.contains("BEGIN ENCRYPTR RSA PUBLIC KEY"));
+	}
+
+	#[test]
+	fn generate_private_only() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let private_path = temp_dir.path().join("priv.pem");
+
+		// Generate only private key
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--private-key",
+				private_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Verify private key file exists
+		let content = fs::read_to_string(&private_path).unwrap();
+		assert!(content.contains("BEGIN ENCRYPTR RSA PRIVATE KEY"));
+	}
+
+	#[test]
+	fn split_keypair() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.pem");
+		let public_path = temp_dir.path().join("split-pub.pem");
+		let private_path = temp_dir.path().join("split-priv.pem");
+
+		// Generate keypair
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Split with explicit paths
+		encryptr()
+			.args([
+				"rsa",
+				"split",
+				"--key-pair",
+				keypair_path.to_str().unwrap(),
+				"--public-key",
+				public_path.to_str().unwrap(),
+				"--private-key",
+				private_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Verify both files exist
+		let pub_content = fs::read_to_string(&public_path).unwrap();
+		assert!(pub_content.contains("BEGIN ENCRYPTR RSA PUBLIC KEY"));
+
+		let priv_content = fs::read_to_string(&private_path).unwrap();
+		assert!(priv_content.contains("BEGIN ENCRYPTR RSA PRIVATE KEY"));
+	}
+
+	#[test]
+	fn split_keypair_auto_names() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("mykey.pem");
+
+		// Generate keypair
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Split with auto-naming
+		encryptr()
+			.args(["rsa", "split", "--key-pair", keypair_path.to_str().unwrap()])
+			.assert()
+			.success();
+
+		// Verify auto-named files exist
+		let public_path = temp_dir.path().join("mykey.pub.pem");
+		let private_path = temp_dir.path().join("mykey.priv.pem");
+
+		let pub_content = fs::read_to_string(&public_path).unwrap();
+		assert!(pub_content.contains("BEGIN ENCRYPTR RSA PUBLIC KEY"));
+
+		let priv_content = fs::read_to_string(&private_path).unwrap();
+		assert!(priv_content.contains("BEGIN ENCRYPTR RSA PRIVATE KEY"));
+	}
+
+	#[test]
+	fn encrypt_decrypt_with_split_keys() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.pem");
+		let public_path = temp_dir.path().join("pub.pem");
+		let private_path = temp_dir.path().join("priv.pem");
+		let plaintext = "TopSecret";
+
+		// Generate and split
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		encryptr()
+			.args([
+				"rsa",
+				"split",
+				"--key-pair",
+				keypair_path.to_str().unwrap(),
+				"--public-key",
+				public_path.to_str().unwrap(),
+				"--private-key",
+				private_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Encrypt with public key only
+		let output = encryptr()
+			.args([
+				"rsa",
+				"encrypt",
+				"--public-key",
+				public_path.to_str().unwrap(),
+				plaintext,
+			])
+			.output()
+			.unwrap();
+		let ciphertext = String::from_utf8(output.stdout).unwrap();
+		let ciphertext = ciphertext.trim();
+
+		// Decrypt with private key only
+		encryptr()
+			.args([
+				"rsa",
+				"decrypt",
+				"--private-key",
+				private_path.to_str().unwrap(),
+				ciphertext,
+			])
+			.assert()
+			.success()
+			.stdout(format!("{plaintext}\n"));
+	}
+
+	#[test]
+	fn generate_conflicts_output_with_separate() {
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				"/tmp/out.pem",
+				"--public-key",
+				"/tmp/pub.pem",
+			])
+			.assert()
+			.failure()
+			.stderr(predicate::str::contains("cannot be used with"));
+	}
 }
 
 mod completions {

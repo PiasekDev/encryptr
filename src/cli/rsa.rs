@@ -26,6 +26,10 @@ pub enum RsaAction {
 	Decrypt(DecryptArgs),
 	/// Export public key from a key pair
 	ExportPublic(ExportPublicArgs),
+	/// Export private key from a key pair
+	ExportPrivate(ExportPrivateArgs),
+	/// Split a key pair into separate public and private key files
+	Split(SplitArgs),
 }
 
 /// Arguments for RSA key generation
@@ -35,9 +39,18 @@ pub struct GenerateArgs {
 	#[arg(short, long)]
 	pub bits: u64,
 
-	/// Output file (stdout if not specified)
-	#[arg(short, long, value_name = "FILE")]
+	/// Output file for combined key pair (stdout if not specified)
+	/// Cannot be used with --public-key or --private-key
+	#[arg(short, long, value_name = "FILE", conflicts_with_all = ["public_key", "private_key"])]
 	pub output: Option<PathBuf>,
+
+	/// Write public key to separate file (omit to skip public key output)
+	#[arg(long, value_name = "FILE")]
+	pub public_key: Option<PathBuf>,
+
+	/// Write private key to separate file (omit to skip private key output)
+	#[arg(long, value_name = "FILE")]
+	pub private_key: Option<PathBuf>,
 
 	/// Output format
 	#[arg(short, long, default_value = "pem")]
@@ -114,6 +127,42 @@ pub struct ExportPublicArgs {
 	pub format: KeyFormat,
 }
 
+/// Arguments for exporting private key
+#[derive(Args)]
+pub struct ExportPrivateArgs {
+	/// Path to key pair PEM file
+	#[arg(long, value_name = "FILE")]
+	pub key_pair: PathBuf,
+
+	/// Output file (stdout if not specified)
+	#[arg(short, long, value_name = "FILE")]
+	pub output: Option<PathBuf>,
+
+	/// Output format
+	#[arg(short, long, default_value = "pem")]
+	pub format: KeyFormat,
+}
+
+/// Arguments for splitting a key pair into separate files
+#[derive(Args)]
+pub struct SplitArgs {
+	/// Path to key pair PEM file
+	#[arg(long, value_name = "FILE")]
+	pub key_pair: PathBuf,
+
+	/// Output file for public key (auto-derived from key-pair if not specified)
+	#[arg(long, value_name = "FILE")]
+	pub public_key: Option<PathBuf>,
+
+	/// Output file for private key (auto-derived from key-pair if not specified)
+	#[arg(long, value_name = "FILE")]
+	pub private_key: Option<PathBuf>,
+
+	/// Output format
+	#[arg(short, long, default_value = "pem")]
+	pub format: KeyFormat,
+}
+
 /// Padding scheme for RSA operations
 #[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PaddingType {
@@ -140,6 +189,8 @@ pub fn run(action: RsaAction) -> Result<()> {
 		RsaAction::Encrypt(args) => encrypt(args),
 		RsaAction::Decrypt(args) => decrypt(args),
 		RsaAction::ExportPublic(args) => export_public(args),
+		RsaAction::ExportPrivate(args) => export_private(args),
+		RsaAction::Split(args) => split(args),
 	}
 }
 
@@ -152,19 +203,36 @@ fn generate(args: GenerateArgs) -> Result<()> {
 	let mut rng = rand::rngs::StdRng::from_entropy();
 	let key_pair = RSAKeyPair::generate(bits, &mut rng);
 
-	match args.format {
-		KeyFormat::Pem => {
-			let pem = key_pair
-				.to_pem(LineEnding::LF)
-				.context("Failed to encode key pair as PEM")?;
-			output::write_text(&pem, args.output.as_ref())?;
+	// Determine output mode: combined key pair vs separate files
+	let separate_output = args.public_key.is_some() || args.private_key.is_some();
+
+	if separate_output {
+		// Output to separate files
+		if let Some(ref pub_path) = args.public_key {
+			write_public_key(&key_pair.public_key, Some(pub_path), args.format)?;
+			eprintln!("Public key written to: {}", pub_path.display());
 		}
-		KeyFormat::Der => {
-			use der::Encode;
-			let der = key_pair
-				.to_der()
-				.context("Failed to encode key pair as DER")?;
-			output::write_binary(&der, args.output.as_ref())?;
+
+		if let Some(ref priv_path) = args.private_key {
+			write_private_key(&key_pair.private_key, Some(priv_path), args.format)?;
+			eprintln!("Private key written to: {}", priv_path.display());
+		}
+	} else {
+		// Output combined key pair (original behavior)
+		match args.format {
+			KeyFormat::Pem => {
+				let pem = key_pair
+					.to_pem(LineEnding::LF)
+					.context("Failed to encode key pair as PEM")?;
+				output::write_text(&pem, args.output.as_ref())?;
+			}
+			KeyFormat::Der => {
+				use der::Encode;
+				let der = key_pair
+					.to_der()
+					.context("Failed to encode key pair as DER")?;
+				output::write_binary(&der, args.output.as_ref())?;
+			}
 		}
 	}
 
@@ -284,24 +352,99 @@ fn export_public(args: ExportPublicArgs) -> Result<()> {
 
 	let key_pair = RSAKeyPair::from_pem(&pem_content).context("Failed to parse key pair PEM")?;
 
-	match args.format {
+	write_public_key(&key_pair.public_key, args.output.as_ref(), args.format)?;
+
+	Ok(())
+}
+
+fn export_private(args: ExportPrivateArgs) -> Result<()> {
+	let pem_content = std::fs::read_to_string(&args.key_pair)
+		.with_context(|| format!("Failed to read key pair: {}", args.key_pair.display()))?;
+
+	let key_pair = RSAKeyPair::from_pem(&pem_content).context("Failed to parse key pair PEM")?;
+
+	write_private_key(&key_pair.private_key, args.output.as_ref(), args.format)?;
+
+	Ok(())
+}
+
+fn split(args: SplitArgs) -> Result<()> {
+	let pem_content = std::fs::read_to_string(&args.key_pair)
+		.with_context(|| format!("Failed to read key pair: {}", args.key_pair.display()))?;
+
+	let key_pair = RSAKeyPair::from_pem(&pem_content).context("Failed to parse key pair PEM")?;
+
+	// Determine output paths (use provided or auto-derive)
+	let extension = match args.format {
+		KeyFormat::Pem => "pem",
+		KeyFormat::Der => "der",
+	};
+
+	let public_path = args
+		.public_key
+		.unwrap_or_else(|| derive_output_path(&args.key_pair, "pub", extension));
+	let private_path = args
+		.private_key
+		.unwrap_or_else(|| derive_output_path(&args.key_pair, "priv", extension));
+
+	// Write both keys
+	write_public_key(&key_pair.public_key, Some(&public_path), args.format)?;
+	eprintln!("Public key written to: {}", public_path.display());
+
+	write_private_key(&key_pair.private_key, Some(&private_path), args.format)?;
+	eprintln!("Private key written to: {}", private_path.display());
+
+	Ok(())
+}
+
+/// Derive an output path from a key pair path by inserting a suffix before the extension
+///
+/// Example: `keys.pem` with suffix `pub` and extension `pem` -> `keys.pub.pem`
+fn derive_output_path(key_pair_path: &std::path::Path, suffix: &str, extension: &str) -> PathBuf {
+	let stem = key_pair_path
+		.file_stem()
+		.and_then(|s| s.to_str())
+		.unwrap_or("key");
+	let parent = key_pair_path.parent().unwrap_or(std::path::Path::new("."));
+
+	parent.join(format!("{}.{}.{}", stem, suffix, extension))
+}
+
+/// Write a public key to a file or stdout
+fn write_public_key(key: &RSAPublicKey, path: Option<&PathBuf>, format: KeyFormat) -> Result<()> {
+	match format {
 		KeyFormat::Pem => {
-			let pem = key_pair
-				.public_key
+			let pem = key
 				.to_pem(LineEnding::LF)
 				.context("Failed to encode public key as PEM")?;
-			output::write_text(&pem, args.output.as_ref())?;
+			output::write_text(&pem, path)?;
 		}
 		KeyFormat::Der => {
 			use der::Encode;
-			let der = key_pair
-				.public_key
-				.to_der()
-				.context("Failed to encode public key as DER")?;
-			output::write_binary(&der, args.output.as_ref())?;
+			let der = key.to_der().context("Failed to encode public key as DER")?;
+			output::write_binary(&der, path)?;
 		}
 	}
+	Ok(())
+}
 
+/// Write a private key to a file or stdout
+fn write_private_key(key: &RSAPrivateKey, path: Option<&PathBuf>, format: KeyFormat) -> Result<()> {
+	match format {
+		KeyFormat::Pem => {
+			let pem = key
+				.to_pem(LineEnding::LF)
+				.context("Failed to encode private key as PEM")?;
+			output::write_text(&pem, path)?;
+		}
+		KeyFormat::Der => {
+			use der::Encode;
+			let der = key
+				.to_der()
+				.context("Failed to encode private key as DER")?;
+			output::write_binary(&der, path)?;
+		}
+	}
 	Ok(())
 }
 
