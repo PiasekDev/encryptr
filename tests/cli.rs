@@ -705,7 +705,7 @@ mod rsa {
 
 		// Inspect keypair
 		encryptr()
-			.args(["rsa", "inspect", "--key", keypair_path.to_str().unwrap()])
+			.args(["rsa", "inspect", keypair_path.to_str().unwrap()])
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Key Pair"))
@@ -748,7 +748,7 @@ mod rsa {
 
 		// Inspect public key
 		encryptr()
-			.args(["rsa", "inspect", "--key", public_path.to_str().unwrap()])
+			.args(["rsa", "inspect", public_path.to_str().unwrap()])
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Public Key"))
@@ -792,7 +792,7 @@ mod rsa {
 
 		// Inspect private key
 		encryptr()
-			.args(["rsa", "inspect", "--key", private_path.to_str().unwrap()])
+			.args(["rsa", "inspect", private_path.to_str().unwrap()])
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Private Key"))
@@ -810,7 +810,7 @@ mod rsa {
 		fs::write(&invalid_path, "not a valid key").unwrap();
 
 		encryptr()
-			.args(["rsa", "inspect", "--key", invalid_path.to_str().unwrap()])
+			.args(["rsa", "inspect", invalid_path.to_str().unwrap()])
 			.assert()
 			.failure()
 			.stderr(predicate::str::contains("Failed to parse key file"));

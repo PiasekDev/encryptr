@@ -169,7 +169,7 @@ pub struct SplitArgs {
 #[derive(Args)]
 pub struct InspectArgs {
 	/// Path to key file (public key, private key, or key pair)
-	#[arg(short, long, value_name = "FILE")]
+	#[arg(value_name = "FILE")]
 	pub key: PathBuf,
 }
 
