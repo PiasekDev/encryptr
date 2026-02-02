@@ -1,4 +1,7 @@
+pub mod common;
+
 pub mod cipher {
+	pub mod aes;
 	pub mod affine;
 	pub mod caesar;
 	pub mod des;

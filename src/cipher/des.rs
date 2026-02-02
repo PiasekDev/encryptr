@@ -3,16 +3,15 @@ use tap::Pipe;
 
 use crate::{
 	cipher::des::{
-		input::{PKCS7PaddedData, PaddingParseError},
 		key_schedule::{KeyBits, KeySchedule},
 		sequence::ContinuousBitSequence,
 	},
+	common::padding::{PKCS7PaddedData, PaddingParseError},
 	extension::u8::{BitByBitAdditionMod2, SelectExt, ToHalvesExt},
 };
 
 pub mod sequence;
 
-mod input;
 mod key_schedule;
 mod permutation;
 
