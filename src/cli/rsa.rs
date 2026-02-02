@@ -30,6 +30,8 @@ pub enum RsaAction {
 	ExportPrivate(ExportPrivateArgs),
 	/// Split a key pair into separate public and private key files
 	Split(SplitArgs),
+	/// Inspect the contents of a key file
+	Inspect(InspectArgs),
 }
 
 /// Arguments for RSA key generation
@@ -163,6 +165,14 @@ pub struct SplitArgs {
 	pub format: KeyFormat,
 }
 
+/// Arguments for inspecting a key file
+#[derive(Args)]
+pub struct InspectArgs {
+	/// Path to key file (public key, private key, or key pair)
+	#[arg(short, long, value_name = "FILE")]
+	pub key: PathBuf,
+}
+
 /// Padding scheme for RSA operations
 #[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PaddingType {
@@ -191,6 +201,7 @@ pub fn run(action: RsaAction) -> Result<()> {
 		RsaAction::ExportPublic(args) => export_public(args),
 		RsaAction::ExportPrivate(args) => export_private(args),
 		RsaAction::Split(args) => split(args),
+		RsaAction::Inspect(args) => inspect(args),
 	}
 }
 
@@ -476,4 +487,92 @@ fn load_private_key(path: &PathBuf) -> Result<RSAPrivateKey> {
 	// Try private key
 	RSAPrivateKey::from_pem(&pem_content)
 		.context("Failed to parse private key PEM. Expected private key or key pair.")
+}
+
+fn inspect(args: InspectArgs) -> Result<()> {
+	let pem_content = std::fs::read_to_string(&args.key)
+		.with_context(|| format!("Failed to read key file: {}", args.key.display()))?;
+
+	// Try to parse as different key types
+	if let Ok(key_pair) = RSAKeyPair::from_pem(&pem_content) {
+		print_key_pair_info(&key_pair);
+	} else if let Ok(public_key) = RSAPublicKey::from_pem(&pem_content) {
+		print_public_key_info(&public_key);
+	} else if let Ok(private_key) = RSAPrivateKey::from_pem(&pem_content) {
+		print_private_key_info(&private_key);
+	} else {
+		anyhow::bail!(
+			"Failed to parse key file. Expected PEM-encoded public key, private key, or key pair."
+		);
+	}
+
+	Ok(())
+}
+
+/// Print information about an RSA key pair
+fn print_key_pair_info(key_pair: &RSAKeyPair) {
+	let bit_length = key_pair.public_key.n.bits();
+	let byte_length = key_pair.public_key.byte_length();
+
+	println!("Key Type:            Key Pair");
+	println!("Bit Length:          {} bits", bit_length);
+	println!(
+		"Modulus (n):         {} ({} bytes)",
+		format_biguint_hex(&key_pair.public_key.n),
+		byte_length
+	);
+	println!("Public Exponent (e): {}", key_pair.public_key.e);
+	println!(
+		"Private Exponent (d): {} ({} bytes)",
+		format_biguint_hex(&key_pair.private_key.d),
+		byte_length
+	);
+}
+
+/// Print information about an RSA public key
+fn print_public_key_info(public_key: &RSAPublicKey) {
+	let bit_length = public_key.n.bits();
+	let byte_length = public_key.byte_length();
+
+	println!("Key Type:            Public Key");
+	println!("Bit Length:          {} bits", bit_length);
+	println!(
+		"Modulus (n):         {} ({} bytes)",
+		format_biguint_hex(&public_key.n),
+		byte_length
+	);
+	println!("Public Exponent (e): {}", public_key.e);
+}
+
+/// Print information about an RSA private key
+fn print_private_key_info(private_key: &RSAPrivateKey) {
+	let bit_length = private_key.n.bits();
+	let byte_length = private_key.byte_length();
+
+	println!("Key Type:            Private Key");
+	println!("Bit Length:          {} bits", bit_length);
+	println!(
+		"Modulus (n):         {} ({} bytes)",
+		format_biguint_hex(&private_key.n),
+		byte_length
+	);
+	println!(
+		"Private Exponent (d): {} ({} bytes)",
+		format_biguint_hex(&private_key.d),
+		byte_length
+	);
+}
+
+/// Format a BigUint as a hexadecimal string with 0x prefix
+///
+/// For large values (> 64 hex chars), truncates to show first 16 and last 16 chars
+/// with "..." in between.
+fn format_biguint_hex(value: &num_bigint::BigUint) -> String {
+	let hex = value.to_str_radix(16);
+
+	if hex.len() <= 64 {
+		format!("0x{}", hex)
+	} else {
+		format!("0x{}...{}", &hex[..16], &hex[hex.len() - 16..])
+	}
 }

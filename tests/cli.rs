@@ -684,6 +684,140 @@ mod rsa {
 			.failure()
 			.stderr(predicate::str::contains("cannot be used with"));
 	}
+
+	#[test]
+	fn inspect_keypair() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.pem");
+
+		// Generate keypair
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Inspect keypair
+		encryptr()
+			.args(["rsa", "inspect", "--key", keypair_path.to_str().unwrap()])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("Key Type:            Key Pair"))
+			// Bit length may be 511 or 512 depending on MSB of n
+			.stdout(predicate::str::is_match(r"Bit Length:\s+51[12] bits").unwrap())
+			.stdout(predicate::str::contains("Modulus (n):         0x"))
+			.stdout(predicate::str::contains("Public Exponent (e): 65537"))
+			.stdout(predicate::str::contains("Private Exponent (d): 0x"));
+	}
+
+	#[test]
+	fn inspect_public_key() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.pem");
+		let public_path = temp_dir.path().join("public.pem");
+
+		// Generate and export public key
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		encryptr()
+			.args([
+				"rsa",
+				"export-public",
+				"--key-pair",
+				keypair_path.to_str().unwrap(),
+				"--output",
+				public_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Inspect public key
+		encryptr()
+			.args(["rsa", "inspect", "--key", public_path.to_str().unwrap()])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("Key Type:            Public Key"))
+			// Bit length may be 511 or 512 depending on MSB of n
+			.stdout(predicate::str::is_match(r"Bit Length:\s+51[12] bits").unwrap())
+			.stdout(predicate::str::contains("Modulus (n):         0x"))
+			.stdout(predicate::str::contains("Public Exponent (e): 65537"))
+			// Should NOT contain private exponent
+			.stdout(predicate::str::contains("Private Exponent").not());
+	}
+
+	#[test]
+	fn inspect_private_key() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.pem");
+		let private_path = temp_dir.path().join("private.pem");
+
+		// Generate and export private key
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		encryptr()
+			.args([
+				"rsa",
+				"export-private",
+				"--key-pair",
+				keypair_path.to_str().unwrap(),
+				"--output",
+				private_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Inspect private key
+		encryptr()
+			.args(["rsa", "inspect", "--key", private_path.to_str().unwrap()])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("Key Type:            Private Key"))
+			// Bit length may be 511 or 512 depending on MSB of n
+			.stdout(predicate::str::is_match(r"Bit Length:\s+51[12] bits").unwrap())
+			.stdout(predicate::str::contains("Modulus (n):         0x"))
+			.stdout(predicate::str::contains("Private Exponent (d): 0x"))
+			// Should NOT contain public exponent
+			.stdout(predicate::str::contains("Public Exponent").not());
+	}
+
+	#[test]
+	fn inspect_invalid_file() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let invalid_path = temp_dir.path().join("invalid.pem");
+		fs::write(&invalid_path, "not a valid key").unwrap();
+
+		encryptr()
+			.args(["rsa", "inspect", "--key", invalid_path.to_str().unwrap()])
+			.assert()
+			.failure()
+			.stderr(predicate::str::contains("Failed to parse key file"));
+	}
 }
 
 mod completions {
