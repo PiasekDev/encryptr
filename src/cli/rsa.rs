@@ -2,11 +2,11 @@
 //!
 //! Implements the `encryptr rsa` subcommand for RSA key generation, encryption, and decryption.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand, ValueEnum};
-use der::EncodePem;
+use der::{Decode, EncodePem};
 use rand::SeedableRng;
 
 use super::input;
@@ -358,10 +358,7 @@ fn decrypt(args: DecryptArgs) -> Result<()> {
 }
 
 fn export_public(args: ExportPublicArgs) -> Result<()> {
-	let pem_content = std::fs::read_to_string(&args.key_pair)
-		.with_context(|| format!("Failed to read key pair: {}", args.key_pair.display()))?;
-
-	let key_pair = RSAKeyPair::from_pem(&pem_content).context("Failed to parse key pair PEM")?;
+	let key_pair = load_key_pair(&args.key_pair)?;
 
 	write_public_key(&key_pair.public_key, args.output.as_ref(), args.format)?;
 
@@ -369,10 +366,7 @@ fn export_public(args: ExportPublicArgs) -> Result<()> {
 }
 
 fn export_private(args: ExportPrivateArgs) -> Result<()> {
-	let pem_content = std::fs::read_to_string(&args.key_pair)
-		.with_context(|| format!("Failed to read key pair: {}", args.key_pair.display()))?;
-
-	let key_pair = RSAKeyPair::from_pem(&pem_content).context("Failed to parse key pair PEM")?;
+	let key_pair = load_key_pair(&args.key_pair)?;
 
 	write_private_key(&key_pair.private_key, args.output.as_ref(), args.format)?;
 
@@ -380,10 +374,7 @@ fn export_private(args: ExportPrivateArgs) -> Result<()> {
 }
 
 fn split(args: SplitArgs) -> Result<()> {
-	let pem_content = std::fs::read_to_string(&args.key_pair)
-		.with_context(|| format!("Failed to read key pair: {}", args.key_pair.display()))?;
-
-	let key_pair = RSAKeyPair::from_pem(&pem_content).context("Failed to parse key pair PEM")?;
+	let key_pair = load_key_pair(&args.key_pair)?;
 
 	// Determine output paths (use provided or auto-derive)
 	let extension = match args.format {
@@ -459,62 +450,198 @@ fn write_private_key(key: &RSAPrivateKey, path: Option<&PathBuf>, format: KeyFor
 	Ok(())
 }
 
-/// Load a public key from a file, trying key pair format first, then public key format
-fn load_public_key(path: &PathBuf) -> Result<RSAPublicKey> {
-	let pem_content = std::fs::read_to_string(path)
-		.with_context(|| format!("Failed to read key file: {}", path.display()))?;
-
-	// Try key pair first
-	if let Ok(key_pair) = RSAKeyPair::from_pem(&pem_content) {
-		return Ok(key_pair.public_key);
-	}
-
-	// Try public key
-	RSAPublicKey::from_pem(&pem_content)
-		.context("Failed to parse public key PEM. Expected public key or key pair.")
+/// Check if file content looks like PEM (starts with "-----BEGIN")
+fn is_pem_format(data: &[u8]) -> bool {
+	data.starts_with(b"-----BEGIN")
 }
 
-/// Load a private key from a file, trying key pair format first, then private key format
-fn load_private_key(path: &PathBuf) -> Result<RSAPrivateKey> {
-	let pem_content = std::fs::read_to_string(path)
+/// Load a key pair from a file (supports both PEM and DER formats)
+fn load_key_pair(path: &Path) -> Result<RSAKeyPair> {
+	let data = std::fs::read(path)
 		.with_context(|| format!("Failed to read key file: {}", path.display()))?;
 
-	// Try key pair first
-	if let Ok(key_pair) = RSAKeyPair::from_pem(&pem_content) {
-		return Ok(key_pair.private_key);
-	}
-
-	// Try private key
-	RSAPrivateKey::from_pem(&pem_content)
-		.context("Failed to parse private key PEM. Expected private key or key pair.")
-}
-
-fn inspect(args: InspectArgs) -> Result<()> {
-	let pem_content = std::fs::read_to_string(&args.key)
-		.with_context(|| format!("Failed to read key file: {}", args.key.display()))?;
-
-	// Try to parse as different key types
-	if let Ok(key_pair) = RSAKeyPair::from_pem(&pem_content) {
-		print_key_pair_info(&key_pair);
-	} else if let Ok(public_key) = RSAPublicKey::from_pem(&pem_content) {
-		print_public_key_info(&public_key);
-	} else if let Ok(private_key) = RSAPrivateKey::from_pem(&pem_content) {
-		print_private_key_info(&private_key);
+	if is_pem_format(&data) {
+		let pem_content =
+			String::from_utf8(data).context("Key file contains invalid UTF-8 for PEM format")?;
+		RSAKeyPair::from_pem(&pem_content).context("Failed to parse key pair PEM")
 	} else {
+		RSAKeyPair::from_der(&data).context("Failed to parse key pair DER")
+	}
+}
+
+/// Load a public key from a file, trying key pair format first, then public key format.
+/// Supports both PEM and DER formats.
+fn load_public_key(path: &Path) -> Result<RSAPublicKey> {
+	let data = std::fs::read(path)
+		.with_context(|| format!("Failed to read key file: {}", path.display()))?;
+
+	if is_pem_format(&data) {
+		let pem_content =
+			String::from_utf8(data).context("Key file contains invalid UTF-8 for PEM format")?;
+
+		// Try key pair first
+		if let Ok(key_pair) = RSAKeyPair::from_pem(&pem_content) {
+			return Ok(key_pair.public_key);
+		}
+
+		// Try public key
+		RSAPublicKey::from_pem(&pem_content)
+			.context("Failed to parse PEM. Expected public key or key pair.")
+	} else {
+		// Try key pair first (DER)
+		if let Ok(key_pair) = RSAKeyPair::from_der(&data) {
+			return Ok(key_pair.public_key);
+		}
+
+		// Try public key (DER)
+		RSAPublicKey::from_der(&data)
+			.context("Failed to parse DER. Expected public key or key pair.")
+	}
+}
+
+/// Load a private key from a file, trying key pair format first, then private key format.
+/// Supports both PEM and DER formats.
+fn load_private_key(path: &Path) -> Result<RSAPrivateKey> {
+	let data = std::fs::read(path)
+		.with_context(|| format!("Failed to read key file: {}", path.display()))?;
+
+	if is_pem_format(&data) {
+		let pem_content =
+			String::from_utf8(data).context("Key file contains invalid UTF-8 for PEM format")?;
+
+		// Try key pair first
+		if let Ok(key_pair) = RSAKeyPair::from_pem(&pem_content) {
+			return Ok(key_pair.private_key);
+		}
+
+		// Try private key
+		RSAPrivateKey::from_pem(&pem_content)
+			.context("Failed to parse PEM. Expected private key or key pair.")
+	} else {
+		// Try key pair first (DER)
+		if let Ok(key_pair) = RSAKeyPair::from_der(&data) {
+			return Ok(key_pair.private_key);
+		}
+
+		// Try private key (DER)
+		RSAPrivateKey::from_der(&data)
+			.context("Failed to parse DER. Expected private key or key pair.")
+	}
+}
+
+/// Parsed key type for inspection
+enum ParsedKey {
+	KeyPair(RSAKeyPair),
+	PublicKey(RSAPublicKey),
+	PrivateKey(RSAPrivateKey),
+}
+
+/// Detected file format
+enum DetectedFormat {
+	Pem,
+	Der,
+}
+
+/// Common public exponents used in RSA.
+/// If the second integer in a DER-encoded key matches one of these, it's likely a public key.
+const COMMON_PUBLIC_EXPONENTS: [u64; 5] = [3, 5, 17, 257, 65537];
+
+/// Check if a value looks like a public exponent (small and commonly used).
+fn is_likely_public_exponent(e: &num_bigint::BigUint) -> bool {
+	// Public exponents are typically small (< 2^32) and often one of the common values
+	if e.bits() > 32 {
+		return false;
+	}
+
+	// Try to convert to u64 and check against common values
+	let e_u64: Option<u64> = e.try_into().ok();
+	match e_u64 {
+		Some(val) => COMMON_PUBLIC_EXPONENTS.contains(&val),
+		None => false,
+	}
+}
+
+/// Load any key type from a file for inspection.
+/// Supports both PEM and DER formats.
+///
+/// For DER format, since public and private keys have the same structure (two integers),
+/// we use heuristics to distinguish them: if the second integer is a common public
+/// exponent (3, 5, 17, 257, 65537), it's treated as a public key.
+///
+/// Returns the parsed key and the detected format.
+fn load_any_key(path: &Path) -> Result<(ParsedKey, DetectedFormat)> {
+	let data = std::fs::read(path)
+		.with_context(|| format!("Failed to read key file: {}", path.display()))?;
+
+	if is_pem_format(&data) {
+		let pem_content =
+			String::from_utf8(data).context("Key file contains invalid UTF-8 for PEM format")?;
+
+		if let Ok(key_pair) = RSAKeyPair::from_pem(&pem_content) {
+			return Ok((ParsedKey::KeyPair(key_pair), DetectedFormat::Pem));
+		}
+		if let Ok(public_key) = RSAPublicKey::from_pem(&pem_content) {
+			return Ok((ParsedKey::PublicKey(public_key), DetectedFormat::Pem));
+		}
+		if let Ok(private_key) = RSAPrivateKey::from_pem(&pem_content) {
+			return Ok((ParsedKey::PrivateKey(private_key), DetectedFormat::Pem));
+		}
+
 		anyhow::bail!(
 			"Failed to parse key file. Expected PEM-encoded public key, private key, or key pair."
 		);
+	} else {
+		// DER format - try key pair first (has 3 integers, so it's unambiguous)
+		if let Ok(key_pair) = RSAKeyPair::from_der(&data) {
+			return Ok((ParsedKey::KeyPair(key_pair), DetectedFormat::Der));
+		}
+
+		// For two-integer keys, we need to use heuristics since public (n, e) and
+		// private (n, d) keys have the same structure.
+		// Parse as public key and check if e looks like a public exponent.
+		if let Ok(public_key) = RSAPublicKey::from_der(&data) {
+			if is_likely_public_exponent(&public_key.e) {
+				return Ok((ParsedKey::PublicKey(public_key), DetectedFormat::Der));
+			} else {
+				// e is too large to be a public exponent, so this is actually a private key
+				// where e is really d
+				let private_key = RSAPrivateKey {
+					n: public_key.n,
+					d: public_key.e,
+				};
+				return Ok((ParsedKey::PrivateKey(private_key), DetectedFormat::Der));
+			}
+		}
+
+		anyhow::bail!(
+			"Failed to parse key file. Expected DER-encoded public key, private key, or key pair."
+		);
+	}
+}
+
+fn inspect(args: InspectArgs) -> Result<()> {
+	let (key, format) = load_any_key(&args.key)?;
+	let format_str = match format {
+		DetectedFormat::Pem => "PEM",
+		DetectedFormat::Der => "DER",
+	};
+
+	match key {
+		ParsedKey::KeyPair(key_pair) => print_key_pair_info(&key_pair, format_str),
+		ParsedKey::PublicKey(public_key) => print_public_key_info(&public_key, format_str),
+		ParsedKey::PrivateKey(private_key) => print_private_key_info(&private_key, format_str),
 	}
 
 	Ok(())
 }
 
 /// Print information about an RSA key pair
-fn print_key_pair_info(key_pair: &RSAKeyPair) {
+fn print_key_pair_info(key_pair: &RSAKeyPair, format: &str) {
 	let bit_length = key_pair.public_key.n.bits();
 	let byte_length = key_pair.public_key.byte_length();
 
 	println!("Key Type:            Key Pair");
+	println!("Format:              {}", format);
 	println!("Bit Length:          {} bits", bit_length);
 	println!(
 		"Modulus (n):         {} ({} bytes)",
@@ -530,11 +657,12 @@ fn print_key_pair_info(key_pair: &RSAKeyPair) {
 }
 
 /// Print information about an RSA public key
-fn print_public_key_info(public_key: &RSAPublicKey) {
+fn print_public_key_info(public_key: &RSAPublicKey, format: &str) {
 	let bit_length = public_key.n.bits();
 	let byte_length = public_key.byte_length();
 
 	println!("Key Type:            Public Key");
+	println!("Format:              {}", format);
 	println!("Bit Length:          {} bits", bit_length);
 	println!(
 		"Modulus (n):         {} ({} bytes)",
@@ -545,11 +673,12 @@ fn print_public_key_info(public_key: &RSAPublicKey) {
 }
 
 /// Print information about an RSA private key
-fn print_private_key_info(private_key: &RSAPrivateKey) {
+fn print_private_key_info(private_key: &RSAPrivateKey, format: &str) {
 	let bit_length = private_key.n.bits();
 	let byte_length = private_key.byte_length();
 
 	println!("Key Type:            Private Key");
+	println!("Format:              {}", format);
 	println!("Bit Length:          {} bits", bit_length);
 	println!(
 		"Modulus (n):         {} ({} bytes)",

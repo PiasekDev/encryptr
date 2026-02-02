@@ -709,6 +709,7 @@ mod rsa {
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Key Pair"))
+			.stdout(predicate::str::contains("Format:              PEM"))
 			.stdout(predicate::str::contains("Bit Length:          512 bits"))
 			.stdout(predicate::str::contains("Modulus (n):         0x"))
 			.stdout(predicate::str::contains("Public Exponent (e): 65537"))
@@ -752,6 +753,7 @@ mod rsa {
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Public Key"))
+			.stdout(predicate::str::contains("Format:              PEM"))
 			.stdout(predicate::str::contains("Bit Length:          512 bits"))
 			.stdout(predicate::str::contains("Modulus (n):         0x"))
 			.stdout(predicate::str::contains("Public Exponent (e): 65537"))
@@ -796,6 +798,7 @@ mod rsa {
 			.assert()
 			.success()
 			.stdout(predicate::str::contains("Key Type:            Private Key"))
+			.stdout(predicate::str::contains("Format:              PEM"))
 			.stdout(predicate::str::contains("Bit Length:          512 bits"))
 			.stdout(predicate::str::contains("Modulus (n):         0x"))
 			.stdout(predicate::str::contains("Private Exponent (d): 0x"))
@@ -814,6 +817,175 @@ mod rsa {
 			.assert()
 			.failure()
 			.stderr(predicate::str::contains("Failed to parse key file"));
+	}
+
+	#[test]
+	fn der_keypair_roundtrip() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.der");
+
+		// Generate keypair in DER format
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--format",
+				"der",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Verify it's binary (not PEM)
+		let content = fs::read(&keypair_path).unwrap();
+		assert!(!content.starts_with(b"-----BEGIN"));
+
+		// Inspect should work with DER
+		encryptr()
+			.args(["rsa", "inspect", keypair_path.to_str().unwrap()])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("Key Type:            Key Pair"))
+			.stdout(predicate::str::contains("Format:              DER"))
+			.stdout(predicate::str::contains("Bit Length:          512 bits"));
+	}
+
+	#[test]
+	fn der_encrypt_decrypt_roundtrip() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.der");
+
+		// Generate keypair in DER format
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--format",
+				"der",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Encrypt with DER key
+		let encrypt_output = encryptr()
+			.args([
+				"rsa",
+				"encrypt",
+				"--public-key",
+				keypair_path.to_str().unwrap(),
+				"Hello DER!",
+			])
+			.assert()
+			.success();
+
+		let ciphertext = String::from_utf8(encrypt_output.get_output().stdout.clone()).unwrap();
+		let ciphertext = ciphertext.trim();
+
+		// Decrypt with DER key
+		encryptr()
+			.args([
+				"rsa",
+				"decrypt",
+				"--private-key",
+				keypair_path.to_str().unwrap(),
+				ciphertext,
+			])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("Hello DER!"));
+	}
+
+	#[test]
+	fn der_split_and_use() {
+		let temp_dir = tempfile::tempdir().unwrap();
+		let keypair_path = temp_dir.path().join("keypair.pem");
+		let public_der = temp_dir.path().join("public.der");
+		let private_der = temp_dir.path().join("private.der");
+
+		// Generate PEM keypair
+		encryptr()
+			.args([
+				"rsa",
+				"generate",
+				"--bits",
+				"512",
+				"--output",
+				keypair_path.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Split to DER format
+		encryptr()
+			.args([
+				"rsa",
+				"split",
+				"--key-pair",
+				keypair_path.to_str().unwrap(),
+				"--format",
+				"der",
+				"--public-key",
+				public_der.to_str().unwrap(),
+				"--private-key",
+				private_der.to_str().unwrap(),
+			])
+			.assert()
+			.success();
+
+		// Verify both are binary
+		assert!(!fs::read(&public_der).unwrap().starts_with(b"-----BEGIN"));
+		assert!(!fs::read(&private_der).unwrap().starts_with(b"-----BEGIN"));
+
+		// Inspect DER public key
+		encryptr()
+			.args(["rsa", "inspect", public_der.to_str().unwrap()])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("Key Type:            Public Key"))
+			.stdout(predicate::str::contains("Format:              DER"));
+
+		// Inspect DER private key
+		encryptr()
+			.args(["rsa", "inspect", private_der.to_str().unwrap()])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("Key Type:            Private Key"))
+			.stdout(predicate::str::contains("Format:              DER"));
+
+		// Encrypt with DER public key
+		let encrypt_output = encryptr()
+			.args([
+				"rsa",
+				"encrypt",
+				"--public-key",
+				public_der.to_str().unwrap(),
+				"DER split test",
+			])
+			.assert()
+			.success();
+
+		let ciphertext = String::from_utf8(encrypt_output.get_output().stdout.clone()).unwrap();
+		let ciphertext = ciphertext.trim();
+
+		// Decrypt with DER private key
+		encryptr()
+			.args([
+				"rsa",
+				"decrypt",
+				"--private-key",
+				private_der.to_str().unwrap(),
+				ciphertext,
+			])
+			.assert()
+			.success()
+			.stdout(predicate::str::contains("DER split test"));
 	}
 }
 
